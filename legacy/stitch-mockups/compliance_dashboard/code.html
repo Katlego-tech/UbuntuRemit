@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>UbuntuRemit Compliance Engine</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-primary-fixed-variant": "#24501e",
+                        "on-secondary": "#ffffff",
+                        "outline-variant": "#c2c9bb",
+                        "surface-container": "#edeeed",
+                        "primary": "#164212",
+                        "surface-dim": "#d9dad9",
+                        "outline": "#72796d",
+                        "on-primary": "#ffffff",
+                        "on-primary-fixed": "#002201",
+                        "tertiary": "#2b3b49",
+                        "on-secondary-fixed": "#241a00",
+                        "secondary-fixed": "#ffe088",
+                        "on-surface": "#191c1c",
+                        "on-tertiary-fixed-variant": "#394857",
+                        "on-secondary-fixed-variant": "#574500",
+                        "surface-variant": "#e1e3e2",
+                        "on-surface-variant": "#42493e",
+                        "on-secondary-container": "#745c00",
+                        "secondary-fixed-dim": "#e9c349",
+                        "secondary": "#735c00",
+                        "on-error-container": "#93000a",
+                        "surface-container-lowest": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "tertiary-container": "#425261",
+                        "on-primary-container": "#9ed090",
+                        "primary-container": "#2e5a27",
+                        "surface-container-low": "#f3f4f3",
+                        "tertiary-fixed": "#d4e4f6",
+                        "surface-container-highest": "#e1e3e2",
+                        "surface-container-high": "#e7e8e7",
+                        "on-error": "#ffffff",
+                        "inverse-primary": "#a1d493",
+                        "surface-bright": "#f9f9f8",
+                        "background": "#f9f9f8",
+                        "surface": "#f9f9f8",
+                        "inverse-surface": "#2e3131",
+                        "on-tertiary": "#ffffff",
+                        "error": "#ba1a1a",
+                        "tertiary-fixed-dim": "#b8c8da",
+                        "secondary-container": "#fed65b",
+                        "inverse-on-surface": "#f0f1f0",
+                        "primary-fixed-dim": "#a1d493",
+                        "primary-fixed": "#bdf0ad",
+                        "on-background": "#191c1c",
+                        "surface-tint": "#3c6934",
+                        "on-tertiary-fixed": "#0d1d2a",
+                        "on-tertiary-container": "#b4c5d6"
+                    },
+                    fontFamily: {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .glass-nav {
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #c2c9bb;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface antialiased custom-scrollbar">
+<!-- SideNavBar Implementation -->
+<aside class="hidden md:flex flex-col h-screen w-64 fixed left-0 top-0 bg-[#f9f9f8] border-r-0 z-40 py-6 space-y-4">
+<div class="px-6 mb-8">
+<div class="text-[#164212] font-black uppercase tracking-widest text-xs mb-1">UbuntuRemit</div>
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white">
+<span class="material-symbols-outlined text-sm" data-icon="account_balance">account_balance</span>
+</div>
+<div>
+<div class="font-headline font-semibold text-sm text-[#164212]">Institutional Grade</div>
+<div class="text-[10px] text-outline uppercase tracking-tighter">Compliance Engine</div>
+</div>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center px-4 py-3 mx-2 text-slate-600 hover:bg-slate-200/50 rounded-xl transition-all duration-200 group" href="#">
+<span class="material-symbols-outlined mr-3 group-hover:translate-x-1 transition-transform" data-icon="dashboard">dashboard</span>
+<span class="font-headline font-semibold text-sm">Dashboard</span>
+</a>
+<a class="flex items-center px-4 py-3 mx-2 text-slate-600 hover:bg-slate-200/50 rounded-xl transition-all duration-200 group" href="#">
+<span class="material-symbols-outlined mr-3 group-hover:translate-x-1 transition-transform" data-icon="payments">payments</span>
+<span class="font-headline font-semibold text-sm">Send Money</span>
+</a>
+<a class="flex items-center px-4 py-3 mx-2 bg-[#164212] text-white rounded-xl transition-all duration-200" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="security" style="font-variation-settings: 'FILL' 1;">security</span>
+<span class="font-headline font-semibold text-sm">Compliance</span>
+</a>
+<a class="flex items-center px-4 py-3 mx-2 text-slate-600 hover:bg-slate-200/50 rounded-xl transition-all duration-200 group" href="#">
+<span class="material-symbols-outlined mr-3 group-hover:translate-x-1 transition-transform" data-icon="history">history</span>
+<span class="font-headline font-semibold text-sm">Wallet &amp; History</span>
+</a>
+</nav>
+<div class="px-4 mt-auto pt-4 space-y-1 border-t border-outline-variant/20">
+<a class="flex items-center px-4 py-2 text-slate-600 hover:bg-slate-200/50 rounded-xl text-sm font-semibold" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="settings">settings</span> Settings
+            </a>
+<a class="flex items-center px-4 py-2 text-slate-600 hover:bg-slate-200/50 rounded-xl text-sm font-semibold" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="contact_support">contact_support</span> Support
+            </a>
+</div>
+</aside>
+<!-- TopAppBar Implementation -->
+<header class="fixed top-0 w-full z-30 md:pl-64">
+<div class="bg-[#f9f9f8]/70 backdrop-blur-md px-6 py-3 flex justify-between items-center shadow-sm shadow-[#191c1c]/5">
+<div class="flex items-center gap-4">
+<h1 class="font-headline tracking-tight font-bold text-lg text-[#164212]">Compliance Health Dashboard</h1>
+<span class="bg-primary-fixed text-on-primary-fixed px-3 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest">Live Engine</span>
+</div>
+<div class="flex items-center gap-4">
+<div class="hidden sm:flex items-center bg-surface-container-high px-4 py-1.5 rounded-full">
+<span class="material-symbols-outlined text-outline text-sm mr-2" data-icon="search">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm w-48 font-body" placeholder="Search TXID or Entity..." type="text"/>
+</div>
+<button class="p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors relative">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-secondary rounded-full border-2 border-white"></span>
+</button>
+<div class="flex items-center gap-3 pl-2 border-l border-outline-variant/30">
+<div class="text-right hidden lg:block">
+<div class="text-xs font-bold text-on-surface">Admin_Root</div>
+<div class="text-[10px] text-outline font-semibold">L3 Verified</div>
+</div>
+<img alt="User profile avatar" class="w-8 h-8 rounded-full border border-primary/20 object-cover" data-alt="Close up portrait of a professional African man in a suit looking confident in an office setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD4jdWbb5-PQJYcaneprfszJb1ZLOlYGCPp1lD8fVMgyhl4RyGv89YdtCwB92wqFaT4wSCiwDbWpzqwO9ksvlFRS8hWQ7fJHWEiYLncLlqe_3PicPqo1q9sSkyAF1wAC8yzHQGVQw3IU848XKvkl69qeUtahsBZe6A5evjE0S0PJH1yny5KiA2JXfozANzQHtQmiRMzf-Uk7b-VDaaRyZjmvoXID3EtfzZAcB8HTFEYUE482mbvjbbptTSSRoNCxqngHtpVukTIURY"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="pt-20 pb-12 md:pl-64 min-h-screen">
+<div class="max-w-7xl mx-auto px-6">
+<!-- Hero Stats Bento Grid -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+<!-- ISO 20022 Success Rate -->
+<div class="md:col-span-2 bg-surface-container-low p-6 rounded-xl relative overflow-hidden group">
+<div class="relative z-10">
+<div class="flex justify-between items-start mb-4">
+<div>
+<h3 class="text-outline-variant text-xs font-bold uppercase tracking-widest mb-1">ISO 20022 Validation</h3>
+<div class="text-4xl font-headline font-black text-primary">99.98%</div>
+</div>
+<span class="material-symbols-outlined text-secondary text-4xl" data-icon="verified" style="font-variation-settings: 'FILL' 1;">verified</span>
+</div>
+<div class="flex items-end gap-1 h-12 mb-4">
+<div class="w-full bg-primary/20 h-8 rounded-sm"></div>
+<div class="w-full bg-primary/30 h-10 rounded-sm"></div>
+<div class="w-full bg-primary/40 h-12 rounded-sm"></div>
+<div class="w-full bg-primary h-11 rounded-sm"></div>
+<div class="w-full bg-primary h-12 rounded-sm"></div>
+<div class="w-full bg-primary/80 h-10 rounded-sm"></div>
+</div>
+<p class="text-sm text-on-surface-variant font-medium">Compliance threshold maintained across 14 corridor nodes.</p>
+</div>
+<div class="absolute -right-4 -bottom-4 opacity-5 group-hover:scale-110 transition-transform duration-700">
+<span class="material-symbols-outlined text-9xl text-primary" data-icon="security">security</span>
+</div>
+</div>
+<!-- Settlement Status Card -->
+<div class="bg-surface-container p-6 rounded-xl flex flex-col justify-between">
+<div>
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-secondary text-lg" data-icon="api">api</span>
+<h3 class="text-on-surface font-bold text-sm">Ripple API Link</h3>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="text-2xl font-headline font-bold text-on-surface">3.2s</span>
+<span class="text-primary font-bold text-xs">AVG SETTLEMENT</span>
+</div>
+</div>
+<div class="mt-4 flex items-center gap-2 text-[10px] font-bold">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="text-on-surface-variant">NODE_SG_01 CONNECTED</span>
+</div>
+</div>
+<!-- Transaction Volume -->
+<div class="bg-primary text-white p-6 rounded-xl flex flex-col justify-between">
+<div>
+<h3 class="text-primary-fixed-dim text-xs font-bold uppercase tracking-widest mb-1">System Load</h3>
+<div class="text-2xl font-headline font-bold">$1.4M<span class="text-sm font-normal opacity-70">/hr</span></div>
+</div>
+<div class="mt-4 h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
+<div class="h-full bg-secondary-fixed w-2/3"></div>
+</div>
+<span class="text-[10px] font-bold mt-2 opacity-80 uppercase">Processing Capacity: 68%</span>
+</div>
+</div>
+<!-- Visualization Section: Real-time Analytics -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<!-- Main Chart Area -->
+<div class="lg:col-span-2 space-y-8">
+<section class="bg-surface-container-lowest p-8 rounded-xl shadow-sm shadow-on-surface/5">
+<div class="flex justify-between items-center mb-8">
+<div>
+<h2 class="font-headline font-extrabold text-xl text-primary">Settlement Performance</h2>
+<p class="text-on-surface-variant text-sm">Institutional remittance via Ledger protocol</p>
+</div>
+<div class="flex gap-2">
+<button class="px-4 py-1.5 rounded-full text-xs font-bold bg-surface-container-high text-on-surface">Daily</button>
+<button class="px-4 py-1.5 rounded-full text-xs font-bold text-outline">Monthly</button>
+</div>
+</div>
+<!-- Pseudo-Chart Visualization -->
+<div class="relative h-64 w-full flex items-end justify-between px-2">
+<div class="absolute inset-0 flex flex-col justify-between pointer-events-none">
+<div class="border-b border-outline-variant/20 w-full h-0"></div>
+<div class="border-b border-outline-variant/20 w-full h-0"></div>
+<div class="border-b border-outline-variant/20 w-full h-0"></div>
+<div class="border-b border-outline-variant/20 w-full h-0"></div>
+</div>
+<!-- Bars -->
+<div class="w-8 bg-surface-container-high rounded-t-lg transition-all hover:bg-secondary h-[40%]"></div>
+<div class="w-8 bg-surface-container-high rounded-t-lg transition-all hover:bg-secondary h-[60%]"></div>
+<div class="w-8 bg-surface-container-high rounded-t-lg transition-all hover:bg-secondary h-[55%]"></div>
+<div class="w-8 bg-primary rounded-t-lg transition-all hover:bg-primary-container h-[85%] relative group">
+<div class="absolute -top-10 left-1/2 -translate-x-1/2 bg-on-surface text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Current Peak</div>
+</div>
+<div class="w-8 bg-surface-container-high rounded-t-lg transition-all hover:bg-secondary h-[45%]"></div>
+<div class="w-8 bg-surface-container-high rounded-t-lg transition-all hover:bg-secondary h-[70%]"></div>
+<div class="w-8 bg-primary/60 rounded-t-lg transition-all hover:bg-primary h-[92%]"></div>
+<div class="w-8 bg-surface-container-high rounded-t-lg transition-all hover:bg-secondary h-[50%]"></div>
+<div class="w-8 bg-surface-container-high rounded-t-lg transition-all hover:bg-secondary h-[65%]"></div>
+<div class="w-8 bg-secondary rounded-t-lg transition-all h-[10%]"></div>
+</div>
+<div class="flex justify-between mt-4 text-[10px] font-bold text-outline-variant px-2">
+<span>08:00</span><span>10:00</span><span>12:00</span><span>14:00</span><span>16:00</span><span>18:00</span><span>20:00</span>
+</div>
+</section>
+<!-- Transaction Health Feed -->
+<section class="bg-surface-container-low rounded-xl overflow-hidden">
+<div class="p-6 border-b border-outline-variant/20 flex justify-between items-center">
+<h3 class="font-headline font-bold text-primary">Live Validation Stream</h3>
+<div class="flex items-center gap-2 text-xs font-semibold text-on-surface-variant">
+<span class="material-symbols-outlined text-sm text-primary" data-icon="sync">sync</span>
+                                Real-time polling active
+                            </div>
+</div>
+<div class="divide-y divide-outline-variant/10">
+<!-- Stream Item 1 -->
+<div class="p-4 flex items-center justify-between hover:bg-surface-container-high transition-colors">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-white flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="account_balance_wallet">account_balance_wallet</span>
+</div>
+<div>
+<div class="text-sm font-bold flex items-center gap-2">
+                                            TXID: 99x02...FE21 
+                                            <span class="flex items-center text-[10px] bg-primary-fixed text-on-primary-fixed px-2 py-0.5 rounded-full">
+<span class="material-symbols-outlined text-[12px] mr-1" data-icon="verified" style="font-variation-settings: 'FILL' 1;">verified</span>
+                                                ISO 20022 Verified
+                                            </span>
+</div>
+<div class="text-[10px] text-outline uppercase tracking-tight">Entity: Standard Chartered | Corridor: KE-GH</div>
+</div>
+</div>
+<div class="text-right">
+<div class="text-sm font-black text-on-surface">$12,450.00</div>
+<div class="text-[10px] font-bold text-primary">COMPLETED IN 2.1s</div>
+</div>
+</div>
+<!-- Stream Item 2 -->
+<div class="p-4 flex items-center justify-between hover:bg-surface-container-high transition-colors">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-white flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="hub">hub</span>
+</div>
+<div>
+<div class="text-sm font-bold flex items-center gap-2">
+                                            TXID: 44r88...BC09 
+                                            <span class="flex items-center text-[10px] bg-primary-fixed text-on-primary-fixed px-2 py-0.5 rounded-full">
+<span class="material-symbols-outlined text-[12px] mr-1" data-icon="verified" style="font-variation-settings: 'FILL' 1;">verified</span>
+                                                ISO 20022 Verified
+                                            </span>
+</div>
+<div class="text-[10px] text-outline uppercase tracking-tight">Entity: Absa Bank | Corridor: ZA-NG</div>
+</div>
+</div>
+<div class="text-right">
+<div class="text-sm font-black text-on-surface">$4,000.00</div>
+<div class="text-[10px] font-bold text-primary">COMPLETED IN 3.4s</div>
+</div>
+</div>
+</div>
+<button class="w-full py-4 text-xs font-bold text-primary hover:bg-primary/5 transition-colors">VIEW ALL TRANSACTIONS</button>
+</section>
+</div>
+<!-- Right Sidebar Modules -->
+<div class="space-y-8">
+<!-- Compliance Engine Status -->
+<section class="bg-surface-container-highest p-6 rounded-xl relative overflow-hidden">
+<h3 class="font-headline font-bold text-on-surface mb-6">Engine Modules</h3>
+<div class="space-y-4 relative z-10">
+<div class="flex items-center justify-between">
+<span class="text-sm font-medium">KYC/AML Oracle</span>
+<span class="text-[10px] font-bold bg-primary text-white px-2 py-0.5 rounded">SECURE</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-sm font-medium">Ripple Settlement Bridge</span>
+<div class="flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+<span class="text-[10px] font-bold text-primary">ACTIVE</span>
+</div>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-sm font-medium">Smart Contract Auditing</span>
+<span class="text-[10px] font-bold bg-secondary text-on-secondary-fixed px-2 py-0.5 rounded">99.9% UPTIME</span>
+</div>
+</div>
+<div class="mt-8 pt-6 border-t border-outline-variant/30 text-center">
+<button class="w-full bg-primary text-white py-3 rounded-xl font-bold text-sm shadow-md shadow-primary/20 hover:scale-[1.02] transition-transform">Trigger System Audit</button>
+</div>
+<!-- Background Pattern -->
+<div class="absolute -top-10 -right-10 w-32 h-32 bg-primary/5 rounded-full blur-3xl"></div>
+</section>
+<!-- Map/Corridor Health -->
+<section class="bg-surface-container-low p-6 rounded-xl">
+<h3 class="font-headline font-bold text-on-surface mb-4">Network Nodes</h3>
+<div class="aspect-square bg-surface-container-high rounded-xl mb-4 relative overflow-hidden">
+<img alt="Institutional node network map" class="w-full h-full object-cover opacity-80 mix-blend-multiply" data-alt="Modern stylized map of Africa and Europe with glowing connection lines and dots representing bank data nodes" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB_d17wvGXczMaVLeEiMAQ1MaNqSLJ3bt3bs0qS9PAXvDxO-2dhZP91BCc5qDwXJu9Eu7Jqce-JcxUIzZ1Mbv6Dc0kOKPd7V1JR-rOHe_wJpU5MAbfwjBxD7cWZoKvcJUQQVqKjmiHFB9H-WEeA0Jrr7q7iKjHK_RqXUh8DUWU_RFVgr3DA7cIyfldge6a1m6jnIqpTrVQiERfSChaGAHZhiIhF2SZ11c-MFeiCGhvDwSuW0SSmXGwX0o6ElGvDG0_8-cVvyDrryvw"/>
+<div class="absolute top-1/2 left-1/2 w-4 h-4 bg-secondary rounded-full border-4 border-white shadow-lg animate-ping"></div>
+<div class="absolute top-1/4 right-1/3 w-3 h-3 bg-primary rounded-full border-2 border-white shadow-lg"></div>
+<div class="absolute bottom-1/4 left-1/3 w-3 h-3 bg-primary rounded-full border-2 border-white shadow-lg"></div>
+</div>
+<div class="flex justify-between items-center text-xs font-bold text-outline uppercase tracking-wider">
+<span>West Africa Node</span>
+<span class="text-primary">Operational</span>
+</div>
+</section>
+<!-- Trust Shield Glass Card -->
+<div class="bg-white/40 backdrop-blur-xl p-6 rounded-xl border border-white/50 shadow-xl shadow-primary/5">
+<div class="flex items-center gap-3 mb-4">
+<div class="w-10 h-10 rounded-full bg-secondary-fixed flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary" data-icon="shield_with_heart" style="font-variation-settings: 'FILL' 1;">shield_with_heart</span>
+</div>
+<h3 class="font-headline font-extrabold text-primary">Compliance Shield</h3>
+</div>
+<p class="text-xs text-on-surface-variant leading-relaxed mb-4">
+                            UbuntuRemit Compliance Engine is fully integrated with FATF Travel Rule protocols and ISO 20022 messaging standards for institutional liquidity.
+                        </p>
+<a class="text-xs font-black text-secondary uppercase tracking-widest border-b-2 border-secondary/20 pb-1" href="#">View Legal Documentation</a>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Floating Action for Admins -->
+<div class="fixed bottom-8 right-8 z-50">
+<button class="flex items-center gap-2 bg-primary text-white px-6 py-4 rounded-full shadow-2xl shadow-primary/40 hover:scale-105 active:scale-95 transition-all">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+<span class="font-headline font-bold uppercase tracking-widest text-xs">New Liquidity Transfer</span>
+</button>
+</div>
+</body></html>

@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# Pre-push gate: blocks direct pushes to main, runs whatever test tooling it finds.
+# Customize the loop below for your real project layout -- see docs/git-workflow.md.
+set -u
+protected="refs/heads/main"
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [ "$remote_ref" = "$protected" ]; then
+    echo "Direct pushes to 'main' are not allowed. Push a branch and open a PR."
+    exit 1
+  fi
+done
+
+echo "Running the test gate before push..."
+fail=0
+root="$(git rev-parse --show-toplevel)"
+
+for dir in "$root" "$root"/services/* "$root"/apps/*; do
+  [ -d "$dir" ] || continue
+  if { [ -f "$dir/pyproject.toml" ] || [ -f "$dir/requirements.txt" ]; } \
+      && python -c "import pytest" >/dev/null 2>&1; then
+    echo "-> pytest ($dir)"
+    ( cd "$dir" && python -m pytest -q ) || fail=1
+  fi
+  if [ -f "$dir/package.json" ] && [ -d "$dir/node_modules" ]; then
+    echo "-> npm test ($dir)"
+    ( cd "$dir" && npm test --silent --if-present ) || fail=1
+  fi
+done
+
+# apps/web is static HTML with no build. Its real test is visual (each page beside its PNG in
+# legacy/stitch-mockups/), which a hook can't do -- so check the one thing it can: that every
+# internal link points at a file that exists. Links left as "#" are deliberate; see
+# docs/design/frontend-web.md section 8.
+if [ -d "$root/apps/web" ]; then
+  echo "-> apps/web link check"
+  for page in "$root"/apps/web/*.html; do
+    [ -f "$page" ] || continue
+    grep -o 'href="[^"#][^"]*\.html"' "$page" 2>/dev/null \
+      | sed -e 's/^href="//' -e 's/"$//' | sort -u \
+      | while read -r target; do
+          if [ ! -f "$root/apps/web/$target" ]; then
+            echo "   BROKEN: $(basename "$page") -> $target"
+            exit 1
+          fi
+        done || fail=1
+  done
+fi
+
+# The placeholder gate. AGENTS.md 2a: nothing ships with a stub standing in for real work.
+# apps/web/src/mocks is the one declared exception (it has replacement task IDs in its README).
+echo "-> placeholder sweep"
+if git diff --cached --name-only --diff-filter=ACM \
+   | grep -Ev '^(legacy/|docs/|apps/web/src/mocks/|.*\.md$)' \
+   | xargs -r grep -nE '\b(TODO|FIXME|NotImplementedError)\b' ; then
+  echo "Placeholders found in the staged diff. A task closed on a stub is BLOCKED, not done."
+  fail=1
+fi
+
+if [ "$fail" -ne 0 ]; then
+  echo "Test gate failed. Fix it before pushing (or --no-verify only for a green branch)."
+  exit 1
+fi
+echo "Test gate passed."
+exit 0
