@@ -153,6 +153,16 @@ Recorded here because the process is supposed to absorb this kind of failure rat
 - [ ] `Settings` and `Support` — same treatment.
 - [ ] Dark mode: `DESIGN.md` specifies only the light tonal stack, so there is no dark ramp to
       build to. Not attempted.
+- [ ] **The export's copy overclaims against the conformance boundary.** `compliance.html` says the
+      engine is "fully integrated with FATF Travel Rule protocols and ISO 20022 messaging
+      standards"; `wallet.html` says transfers are "backed by Tier 1 banking protocols". Neither is
+      demonstrable, and iso20022-messaging.md §3.6 says we build on the base catalogue and claim no
+      more. But this is frozen mockup copy, and §8 says the export isn't edited casually — so two
+      project rules genuinely conflict here and **neither wins by default**. It needs a decision
+      recorded in §8 (rewrite the copy and accept the deviation from the reference / keep it and
+      gate on T025 / caveat it elsewhere). Raised by T032. It is not urgent while the pages are
+      static and nothing on them purports to be a real transaction; it becomes urgent the moment
+      T025 puts live data behind that copy.
 - [ ] Accessibility has not been assessed on the export — no focus-visible styling, decorative
       icons unlabelled, the settlement chart is colour-only with no table view. Auditing it is
       **T026**, and any fix must be checked against the PNGs like anything else.

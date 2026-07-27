@@ -196,19 +196,26 @@ Each user-story phase is ordered **Design → Tests FIRST (must FAIL) → Implem
 > through SWIFT MyStandards, and until we have that export **every version number in the design is
 > a hypothesis**. `pacs.008.001.08` / `camt.053.001.08` / `pain.001.001.09` appear there marked
 > provisional for exactly this reason. Writing one into code as confirmed is a Non-negotiable I
-> violation, not a shortcut. Build the pipeline first; it is what makes the answer safe to adopt
-> whenever it arrives.
+> violation, not a shortcut.
+>
+> **Resolved 2026-07-27:** we build against the **public ISO 20022 base catalogue** and state
+> plainly that this is not SARB conformance (§3.6). The MyStandards path needs participant standing
+> the project doesn't have. Nothing here is blocked any more — but the boundary is load-bearing,
+> and T032 exists to keep it stated everywhere a reader might assume otherwise.
 
 ### 3a — Schema governance (build this before any schema is vendored)
 
 - [ ] T028 [FND] Define the schema-policy matrix structure, unpopulated.
       Design:   iso20022-messaging.md §3.5
       Files:    `services/messaging/schema-policy.yaml`
-      Contract: `contexts.<samos|sadc_rtgs>.<businessArea.type.variant>.authorizedVersion`
+      Contract: `conformance.{claim,notClaimed}` + `contexts.<base|samos|sadc_rtgs>.{source,
+                retrievedOn,messages}` — see §3.5. `source` is the load-bearing field.
       Verify:   `pytest services/messaging/test_policy.py` — the loader rejects a malformed matrix
       Done:     versions are keyed PER CLEARING CONTEXT (SAMOS and SADC-RTGS are separately
-                governed and may authorise different versions of the same message); the file
-                loads and is empty of real values, which is honest
+                governed and may authorise different versions of the same message); provenance
+                travels in the data via `source`, so nothing downstream can mistake a
+                base-catalogue version for a regulator-authorised one; the file loads and is
+                empty of real values, which is honest
 - [ ] T029 [FND] Failing tests for the schema-verification pipeline — one per stage in §3.4.
       Verify:   `pytest services/messaging/test_verify_schema.py` — fails because the verifier
                 doesn't exist yet, not because it errors
@@ -226,21 +233,40 @@ Each user-story phase is ordered **Design → Tests FIRST (must FAIL) → Implem
                 applies the same checks to every dependency, including the BAH
       Note:     **not blocked** — the pipeline is fully specified without knowing the versions.
                 This is deliberately the first thing built, not the last.
-- [ ] T031 [FND] **BLOCKED** — obtain SWIFT MyStandards access to the SARB/PASA readiness portal
-      and populate `schema-policy.yaml` from the official export.
-      Blocked by: portal access. This is an ACCESS problem, not a research problem; no further
-                reading resolves it, and no amount of inference substitutes for the export.
-      Done:     `schema-policy.yaml` carries real authorised versions for `samos` and
-                `sadc_rtgs`, sourced from the export, with the export date recorded
-      Also:     resolve whether to target the SADC-RTGS **UG2026** release (November 2026) directly
-                rather than pinning to a version with a known expiry (iso20022-messaging.md §10)
-- [ ] T032 [FND] Vendor the XSDs, admitted through T030's pipeline.
-      Files:    `services/messaging/schemas/`
-      Verify:   every file in the directory passes `verify_schema.py`; checksum test on each
-      Done:     structural equivalence to the MyStandards export asserted — NOT merely a matching
-                filename or suffix (§3.3: a permissive base schema with the right name compiles,
-                runs, and is rejected at the SARB gateway)
-      Blocked by: T031
+- [ ] T031 [FND] Vendor schemas from the public ISO 20022 catalogue and populate the policy matrix.
+      Design:   iso20022-messaging.md §3.5, §3.6 — **read §3.6 before starting**
+      Files:    `services/messaging/schema-policy.yaml`, `services/messaging/schemas/`
+      Contract: `conformance.claim: ISO_20022_BASE`; `contexts.base.source: PUBLIC_BASE_CATALOGUE`
+                with `retrievedOn` and a `sha256` per file; `samos` / `sadc_rtgs` present and empty
+      Verify:   every vendored file passes `verify_schema.py` (T030); the conformance-claim test
+                fails the build if anything asserts SARB conformance while those two contexts are
+                empty
+      Done:     **no version number is hand-typed** — each is extracted from that XSD's own
+                `targetNamespace` at download and written into the matrix with its checksum and
+                retrieval date. This is what makes the file trustworthy.
+      Note:     NO LONGER BLOCKED. The SARB MyStandards path was closed deliberately on 2026-07-27
+                (§3.6): the export needs participant standing UbuntuRemit does not have, waiting on
+                it would block the message layer indefinitely, and adopting the reference paper's
+                illustrative versions as confirmed is the Non-negotiable I violation the original
+                blocker existed to prevent. We build on the base catalogue and say so.
+- [ ] T032 [FND] State the conformance boundary everywhere a reader could form the wrong impression.
+      Design:   iso20022-messaging.md §3.6 (the may / may-not table)
+      Files:    `SPEC.md`, `README.md`, `services/messaging/README.md`
+      Verify:   grep the repo for "SARB-compliant" / "SARB conformant" and equivalents — every hit
+                is either absent or explicitly negated
+      Done:     no document, code comment or log line implies SARB PEM conformance. The product
+                claim is auditability; implying unverifiable regulatory conformance fails that
+                claim before a single payment is processed.
+      ⚠ UI:     `apps/web/compliance.html` currently reads "fully integrated with FATF Travel Rule
+                protocols and ISO 20022 messaging standards", and `wallet.html` claims transfers
+                are "backed by Tier 1 banking protocols". Both are mockup marketing copy that
+                overclaims against §3.6 — and both are in the frozen export, which is not edited
+                casually (frontend-web.md §8). This is a genuine conflict between two rules, and
+                it is NOT resolved here: it needs a decision recorded in frontend-web.md §8 before
+                a word changes. Flagging it is the deliverable; rewriting it is not.
+                Note this copy only becomes a live claim when the pages carry real data (T025) —
+                today they are a static mockup and nothing on them purports to be a real
+                transaction. That's why this is a tracked conflict, not an emergency.
 
 ### 3b — The messages
 
@@ -273,8 +299,9 @@ Each user-story phase is ordered **Design → Tests FIRST (must FAIL) → Implem
       Verify:   one negative test per rejection reason, each asserting the *specific* rejection
       Done:     `EndToEndId` reuse is a hard rejection; no model participates in validation
 
-**Checkpoint:** the schema pipeline rejects every negative case in T029, and — once T031 unblocks —
-a pain.001 can be accepted, validated, and turned into a conformant pacs.008.
+**Checkpoint:** the schema pipeline rejects every negative case in T029; a pain.001 can be accepted,
+validated, and turned into a base-catalogue-conformant pacs.008; and no artifact anywhere claims
+SARB conformance.
 
 ---
 

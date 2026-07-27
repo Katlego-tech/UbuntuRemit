@@ -3,8 +3,13 @@
 **Status:** agreed · **Owner:** Kirito (Claude) · **Tasks:** T060–T068 ·
 **Spec:** [SPEC.md](../../SPEC.md) US3, US4
 
-> What leaves the building, in exactly what shape — and how we prove the shape is the one SARB
-> will accept, rather than the one we assumed.
+> What leaves the building, in exactly what shape — and how we prove the shape is the one we
+> claim, rather than the one we assumed.
+>
+> ⚠ **Scope boundary:** this implementation targets the **public ISO 20022 base catalogue**, not
+> SARB's Usage Guidelines, which require an institutional MyStandards credential we do not have.
+> It is ISO 20022-conformant and explicitly **not** SARB PEM-conformant. See §3.6 — this boundary
+> is load-bearing, not boilerplate.
 
 ---
 
@@ -23,7 +28,8 @@ negotiation that decides the rail ([asco-orchestrator.md](asco-orchestrator.md))
 | **Schema versioning & verification under SARB PEM** | `docs/reference/SARB ISO 20022 Suffix Verification.pdf` |
 | Domain entities | [domain-model.md](domain-model.md) §3 |
 | External standard | ISO 20022 — URN anatomy in §3 below |
-| **The authority on versions** | **SWIFT MyStandards, SARB/PASA readiness portal — we do not have access yet (§10)** |
+| **Schema source (chosen)** | **The public ISO 20022 catalogue at iso20022.org — see §3.6 for what this does and does not entitle us to claim** |
+| Schema source (not available) | SWIFT MyStandards, SARB/PASA readiness portal — institutional credential, out of reach (§3.6) |
 
 ## 3. Schema authority and version governance
 
@@ -81,6 +87,16 @@ and emits payloads that are **fatally rejected at the SARB gateway**.
 **Therefore:** verification must assert structural equivalence with the MyStandards export, not
 merely that the suffix string matches.
 
+> **Under the schema source we actually chose (§3.6), this check cannot fire — because the
+> permissive base schema is what we are using.** That is not a bug in the pipeline; it is the
+> precise, statable limitation of the base-catalogue path. The check stays implemented and stays
+> dormant, so that supplying a MyStandards export later activates it rather than requiring new code.
+>
+> We compensate where it is cheap and unambiguous to do so: `ChargeBearer` is treated as
+> **mandatory** in our builders even though the base schema permits `[0..1]`. Emitting a field a
+> regulator might require is harmless; omitting one is fatal. Where a constraint is a *narrowing*
+> we can guess safely, we narrow. Where it isn't, we don't invent one.
+
 ### 3.4 The verification pipeline
 
 Six stages, run as a pre-commit hook **and** in CI, over anything staged into
@@ -118,48 +134,108 @@ extraction and policy evaluation apply recursively, to every import.
 
 ### 3.5 The policy matrix
 
-`services/messaging/schema-policy.yaml` is the single machine-readable ground truth, synchronised
-from the MyStandards export and reviewed like any other change:
+`services/messaging/schema-policy.yaml` is the single machine-readable ground truth, reviewed like
+any other change. Its most important field is `source` — the provenance of the versions, carried in
+the data rather than in a comment, so nothing downstream can treat base-catalogue versions as
+regulator-authorised:
 
 ```yaml
-# NOT YET POPULATED WITH REAL VALUES — see §10. Structure only.
+# Versions are NEVER hand-typed. They are extracted from the targetNamespace of the
+# downloaded XSD at vendor time (T031) and pinned with a checksum. See §3.6.
+conformance:
+  claim: ISO_20022_BASE            # what we may honestly assert
+  notClaimed: SARB_PEM_CONFORMANT  # what we may not
+
 contexts:
-  samos:            # domestic RTGS
-    pacs.008.001: { authorizedVersion: "??" }
-    camt.053.001: { authorizedVersion: "??" }
-    head.001.001: { authorizedVersion: "??" }
-  sadc_rtgs:        # regional settlement — may differ from samos
-    pacs.008.001: { authorizedVersion: "??" }
+  base:
+    source: PUBLIC_BASE_CATALOGUE  # iso20022.org
+    retrievedOn: <ISO date>        # filled at download
+    messages:
+      pain.001.001: { authorizedVersion: <from targetNamespace>, sha256: <...> }
+      pacs.008.001: { authorizedVersion: <from targetNamespace>, sha256: <...> }
+      camt.053.001: { authorizedVersion: <from targetNamespace>, sha256: <...> }
+      head.001.001: { authorizedVersion: <from targetNamespace>, sha256: <...> }
+
+  # Populated only if a MyStandards export is ever obtained. Their presence is what
+  # flips the conformance claim above; nothing else may.
+  samos:     { source: SARB_MYSTANDARDS, messages: {} }
+  sadc_rtgs: { source: SARB_MYSTANDARDS, messages: {} }
 ```
 
 Version is keyed **per clearing context**, because SAMOS and SADC-RTGS are separately governed and
-may legitimately authorise different versions of the same message.
+may legitimately authorise different versions of the same message. Keeping those contexts present
+but empty is deliberate: the shape of what we're missing stays visible.
 
-### 3.6 What is still not known
+**Versions are extracted, never authored.** The vendoring step downloads the XSD, reads the version
+out of its own `targetNamespace`, and writes that into the matrix alongside a checksum and the
+retrieval date. Nobody types a version number by hand — which is what makes the whole file
+trustworthy, and closes the exact hole this document opened with.
 
-The reference paper is explicit that its own version table is **illustrative** — it offers
-`pacs.008.001 → 08`, `pacs.009.001 → 09`, `camt.053.001 → 08` as "a representative section of what
-a policy matrix might dictate", not as SARB's published position. It is a worked example of the
-*mechanism*, not an authority on the *values*.
+### 3.6 Schema source: the decision, and its boundary
 
-So this document's targets remain **unconfirmed**, and are recorded as such:
+**Decided 2026-07-27: we build against the public ISO 20022 catalogue (iso20022.org), and we state
+plainly that this is not SARB conformance.**
 
-| Message | Target | Standing |
-| --- | --- | --- |
-| `pacs.008.001.08` | provisional | Matches the paper's illustrative matrix. Illustrative ≠ authoritative. |
-| `camt.053.001.08` | provisional | Same. |
-| `pain.001.001.09` | **weakest** | Absent from the illustrative matrix entirely. The `pain.001.001.09` sources the paper cites are European MIGs (Nordea, LHV), not SARB. |
-| `head.001.001.xx` | **unknown** | We don't have a candidate at all. |
+The reference paper is explicit that its own version table is illustrative — it offers
+`pacs.008.001 → 08`, `pacs.009.001 → 09`, `camt.053.001 → 08` as "a representative section of what a
+policy matrix might dictate", not as SARB's published position. It documents the *mechanism*; it is
+not an authority on the *values*.
 
-**Writing any of these into code as "confirmed" is a Non-negotiable I violation.** They are
-hypotheses until a MyStandards export says otherwise.
+And the real authority is out of reach. A MyStandards readiness-portal export requires a Swift
+account plus access granted by the Portal Publisher to their participant community — an
+institutional credential predicated on being a participant. UbuntuRemit is not one. That is not a
+paperwork obstacle to push through; it is a category the project is not in.
+
+So there were two honest options and one dishonest one:
+
+| Path | Verdict |
+| --- | --- |
+| Wait for MyStandards access | Blocks the entire message layer indefinitely on something we cannot obtain |
+| **Build on the public base catalogue, labelled** | **Chosen.** Real schemas, real validation, a real pipeline — with the limitation stated |
+| Adopt the paper's illustrative numbers as "confirmed" | **Rejected.** This is the Non-negotiable I violation the blocker existed to prevent |
+
+#### What we may and may not claim
+
+| We may say | We may **not** say |
+| --- | --- |
+| Messages conform to the ISO 20022 base catalogue | Messages conform to SARB PEM Usage Guidelines |
+| Schema versions are pinned, checksummed, and verified | Schema versions are SARB-authorised |
+| The pipeline enforces version and dependency policy | The pipeline enforces SARB policy |
+| The design targets SAMOS / SADC-RTGS | The implementation is accepted by SAMOS / SADC-RTGS |
+
+This is not a disclaimer to bury. It is **Non-negotiable I applied to ourselves**: the product claim
+is auditability, and a system that implies regulatory conformance it cannot demonstrate has failed
+its own central premise before it processes a single payment. `schema-policy.yaml` carries the
+distinction as data (`conformance.claim` / `notClaimed`, and `source` per context) so it is
+enforceable rather than aspirational — and it appears in SPEC.md's non-goals and the README.
+
+#### Known consequences
+
+- **The structural-equivalence check (§3.3) is inert.** We are using the permissive base schema, so
+  there is nothing constrained to compare it against. The code stays; it activates the day an
+  export exists.
+- **Constraints we cannot know, we do not invent.** Where a SARB narrowing is cheap and safe to
+  assume, we take it (`ChargeBearer` mandatory). Where it isn't, we leave the base behaviour and
+  record the uncertainty rather than guessing a rule.
+- **The `ExternalPurpose1Code` mappings in §5 stay provisional** — SARB may restrict them to a
+  narrower subset, and we have no way to check.
+- **Nothing about the pipeline changes.** T028–T030 read a policy matrix and enforce it. Swapping
+  base-catalogue versions for a MyStandards export later is an edit to one YAML file and a flip of
+  `conformance.claim` — no code changes. That is exactly why it was built first.
+
+#### If access is ever obtained
+
+Populate the `samos` / `sadc_rtgs` contexts, flip `conformance.claim`, re-run the pipeline, and
+expect the newly-active structural-equivalence check to fail loudly on the base schemas. That
+failure is the feature.
 
 ### 3.7 Timing
 
 SADC-RTGS phases run toward **November 2026 UG2026 releases**, and it is currently July 2026.
-Whatever we pin now is likely to be superseded within months, which is an argument for the pipeline
-in §3.4 over any hard-coded constant: **the versions must be data, refreshed from the portal, not
-literals in source.**
+Under §3.6 we are not tracking those releases — but the base catalogue moves too, and the argument
+is the same either way: **versions are data with a retrieval date and a checksum, never literals in
+source.** Re-vendoring is a reviewed change to `schema-policy.yaml`, not an edit scattered through
+builders.
 
 ## 4. Message lifecycle
 
@@ -304,7 +380,8 @@ reconciliation for both transfers.
 
 | Decision | Chosen | Rejected, and why |
 | --- | --- | --- |
-| Version source of truth | `schema-policy.yaml`, synced from the MyStandards export | constants in source — UG2026 lands in November 2026 (§3.7); a literal goes stale silently |
+| **Schema source** | **public ISO 20022 base catalogue, with the non-conformance stated in data and prose (§3.6)** | waiting on MyStandards access — an institutional credential we cannot obtain, which would block the message layer indefinitely; and adopting the reference paper's illustrative versions as confirmed, which is the Non-negotiable I violation the blocker existed to prevent |
+| Version source of truth | `schema-policy.yaml`, versions extracted from each XSD's own `targetNamespace` at vendor time | constants in source — UG2026 lands in November 2026 (§3.7); a literal goes stale silently |
 | Schema admission | automated pre-commit + CI verification | code review — a human does not reliably spot `iso:2022` vs `iso:20022`, and that typo is a known-common failure |
 | Suffix check | necessary but **not** sufficient; assert structural equivalence to the MyStandards export | suffix-only — a correctly-named permissive base schema passes and then fails at the SARB gateway (§3.3) |
 | Imports | recursive traversal, same checks | payload-only — an outdated BAH invalidates an otherwise perfect message |
@@ -319,7 +396,12 @@ reconciliation for both transfers.
 
 - **Schema admission (negative tests, one per stage):** a typo'd URN base, a mismatched suffix, an
   outdated `xs:import`, and a permissive-base schema with correct naming must each abort the commit
-  with a message naming the failed assertion.
+  with a message naming the failed assertion. (The last is expected to be *dormant* under §3.6 —
+  the test asserts it is dormant for the stated reason, not that it silently passes.)
+- **Conformance-claim test:** with only `PUBLIC_BASE_CATALOGUE` contexts populated,
+  `conformance.claim` must be `ISO_20022_BASE`. Any code path or document string asserting SARB
+  conformance while the `samos`/`sadc_rtgs` contexts are empty is a build failure. The boundary in
+  §3.6 is enforced, not merely written down.
 - Round-trip: `Transfer` → pain.001 → parse → `Transfer` is lossless for every mapped field.
 - XSD conformance for a golden message of each type, against the **admitted** schema.
 - Negative tests, one per §6B rejection reason, each asserting the *specific* rejection.
@@ -328,18 +410,24 @@ reconciliation for both transfers.
 
 ## 10. Open questions
 
-- [ ] **Obtain SWIFT MyStandards access to the SARB/PASA readiness portal.** This is now the single
-      blocker on the whole message layer, and it is an *access* problem, not a research problem —
-      no further reading resolves it. Everything else here is designed and implementable.
-- [ ] **Populate `schema-policy.yaml` from that export** for both `samos` and `sadc_rtgs`. Until
-      then every version in this document is a hypothesis (§3.6), and `pain.001`'s is the weakest.
-- [ ] **BAH:** which of `head.001.001.xx` / `head.003.001.xx`, and which version? Needs a
-      `SettlementInstruction` field in [domain-model.md](domain-model.md) §3 — that diagram changes
-      before the code does.
-- [ ] Is the SADC-RTGS **UG2026** release (November 2026) the version we should target directly,
-      given it lands within months? Pinning to a version with a known expiry may be wasted work.
-- [ ] Does the SARB UG restrict `ExternalPurpose1Code` to a narrower subset than the five codes
-      mapped in §5?
-- [ ] Does PAPSS require its own `SttlmMtd`/envelope conventions beyond standard pacs.008?
+Resolved by §3.6: *"which version suffixes does SARB authorise"* is no longer an open question here
+— it is **out of scope**, and the boundary is stated rather than pending.
+
+- [ ] **Populate `schema-policy.yaml` from the public catalogue (T031).** Versions extracted from
+      each XSD's own `targetNamespace` at download, with checksum and retrieval date. No number is
+      hand-typed.
+- [ ] **BAH:** `head.001.001.xx` or `head.003.001.xx`, and which version? Choose from the base
+      catalogue and record the reasoning. Needs the `SettlementInstruction` field already added to
+      [domain-model.md](domain-model.md) §3 (T033).
+- [ ] Does the base catalogue's `ExternalPurpose1Code` cover the five codes mapped in §5, and do
+      any require a code set we'd need to vendor separately?
+- [ ] Does PAPSS require its own `SttlmMtd`/envelope conventions beyond standard pacs.008? Same
+      credential problem may apply — if so, state the same kind of boundary rather than guessing.
 - [ ] Is camt.053 delivered intraday or end-of-day? Determines how long a delivered-but-unreconciled
       transfer legitimately sits in that state before it's an alert.
+
+**Parked, not open** — reopen only if the project's status changes:
+
+- Obtaining SWIFT MyStandards access to the SARB/PASA readiness portal. Requires participant
+  standing; see §3.6. Portal custody may also be moving with the PASA → PayInc / NPU transition,
+  so any future attempt should confirm who the Portal Publisher currently is before asking.

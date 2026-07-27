@@ -40,6 +40,13 @@ decision was made.
 - **Not** a replacement for the core banking ledger; camt.053 reconciles *back* to it.
 - **No** corridors beyond those explicitly configured. An unsupported corridor is a rejection, not
   a best-effort attempt.
+- **Not SARB PEM-conformant, and does not claim to be.** Messages are built against the **public
+  ISO 20022 base catalogue**. SARB's Usage Guidelines are published as enforceable schemas through
+  SWIFT MyStandards and require participant standing this project does not have, so the constrained
+  subset SARB actually enforces is unavailable to us. The design targets SAMOS and SADC-RTGS; the
+  implementation is not validated against either. See
+  [docs/design/iso20022-messaging.md](docs/design/iso20022-messaging.md) §3.6 — this is a stated
+  boundary, not a temporary gap.
 
 ---
 
@@ -132,6 +139,10 @@ validation stream on one screen, **so that** I see degradation before a customer
 ## Acceptance criteria (system-level)
 
 - [ ] **Zero uncited compliance verdicts**, in any environment, at any time.
+- [ ] **No artifact claims regulatory conformance the project cannot demonstrate.** No document,
+      code comment, log line or UI string implies SARB PEM conformance while the `samos` /
+      `sadc_rtgs` contexts in `schema-policy.yaml` are empty. Enforced by a build check, not by
+      good intentions — the product claim is auditability, and overclaiming defeats it first.
 - [ ] **No fabricated data reaches a user or a message**: rates, rails, fees and verdicts trace to a
       real source, a real rail response, or a deterministic validator. (Non-negotiable I.)
 - [ ] **`main` is always green** — branch-only, PR-gated, CI-enforced.

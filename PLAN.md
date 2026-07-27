@@ -32,6 +32,9 @@ constitution and let this section be the single copy (see
    a real rail response, or a deterministic validator — never to model judgement alone. A
    `ComplianceVerdict` with no cited rule is invalid by construction. A `LiquidityProposal` naming
    a rail that wasn't in its input is rejected. **This is Non-negotiable I.**
+   It applies to the project's own claims as much as to its outputs: we build against the public
+   ISO 20022 base catalogue and say so, rather than implying SARB PEM conformance we cannot
+   demonstrate ([docs/design/iso20022-messaging.md](docs/design/iso20022-messaging.md) §3.6).
 2. **The model suggests; deterministic code decides.** No LLM output permits a settlement, passes a
    schema, or overrides a guardrail. Every permit/forbid edge in
    [docs/design/asco-orchestrator.md](docs/design/asco-orchestrator.md) §3 is hard-coded.
@@ -70,7 +73,7 @@ constitution and let this section be the single copy (see
 | **Key external services/models** | Two open-weight models co-resident on one MI300X: 70B-class (Compliance Sentinel), 32B-class (Liquidity Strategist). Rails: Ripple, SWIFT, PAPSS. **No third-party LLM API, ever** |
 | **Testing** | pytest (services) · a determinism harness that replays a transfer 50× and asserts an identical rail and outcome. The web client's test is visual: each page beside its PNG in `legacy/stitch-mockups/` |
 | **Perf/cost goals** | Avg settlement ≈ 3 s on the Ripple corridor; agent negotiation ≤ 3 exchanges; FP8 quantisation adopted **only** after measuring reasoning degradation, never assumed |
-| **Constraints** | SARB PEM (absolute traceability, RTGS, pre-execution KYC/AML) · FATF Travel Rule · ISO 20022 conformance · data residency |
+| **Constraints** | SARB PEM (absolute traceability, RTGS, pre-execution KYC/AML) · FATF Travel Rule · **ISO 20022 base-catalogue conformance — NOT SARB Usage Guidelines (§3.6)** · data residency |
 | **Scale** | Institutional throughput on the order of the console's $1.4M/hr figure; one deploying institution in v1 |
 
 ---

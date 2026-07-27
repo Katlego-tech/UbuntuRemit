@@ -18,6 +18,17 @@ guardrails sit on both sides of the negotiation, so an LLM can rank and explain 
 but can never permit a settlement. Everything runs on sovereign infrastructure (AMD Instinct
 MI300X · ROCm 7.0 · vLLM), so no transaction data reaches a third-party API.
 
+> ### ⚠ Conformance boundary
+>
+> UbuntuRemit builds ISO 20022 messages against the **public base catalogue** at iso20022.org.
+> It is **not SARB PEM-conformant and does not claim to be.** SARB publishes its Usage Guidelines
+> — the constrained subset it actually enforces — as schemas on SWIFT MyStandards, which requires
+> participant standing this project does not have.
+>
+> The design *targets* SAMOS and SADC-RTGS. The implementation is validated against neither.
+> Reasoning, and the exact list of what may and may not be claimed:
+> [docs/design/iso20022-messaging.md](docs/design/iso20022-messaging.md) §3.6.
+
 ## Start here
 
 | If you're… | Read |

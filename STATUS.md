@@ -32,7 +32,7 @@ _Last updated: 2026-07-27 — by Kirito (via Claude)_
 |------|-------|----|--------|
 | `design` | Kirito | Claude | ✅ done — all four design docs merged |
 | `frontend-web` | Kirito | Claude | ✅ the Stitch export ships as-is from `apps/web/` — approved |
-| `messaging` | — | — | 🟡 unclaimed — T028–T030 (schema pipeline) are **ready to start**; T031/T032 blocked on portal access |
+| `messaging` | — | — | 🟢 unclaimed and **fully unblocked** — T028–T032 all ready to start |
 | `asco` | — | — | ⬜ unclaimed, blocked on Phase 3 |
 | `infra` | — | — | ⬜ unclaimed — T008 (CI) is the next thing anyone can pick up |
 
@@ -52,9 +52,8 @@ lanes with the most drawn structure waiting for you — start at
    unblocked work: it needs no version numbers to build, and it is what makes the versions safe to
    adopt whenever the MyStandards export arrives. Design is complete in
    `docs/design/iso20022-messaging.md` §3.4.
-4. **Request SWIFT MyStandards access** to the SARB/PASA readiness portal (T031). This is the only
-   remaining unknown on the whole message layer, and it is an *access* problem — no further reading
-   resolves it.
+4. **T031/T032 — vendor the base-catalogue schemas and state the conformance boundary.** Versions
+   are extracted from each XSD's own `targetNamespace` at download, never hand-typed.
 
 ## 🗓️ Timeline to `TBD`
 
@@ -89,12 +88,18 @@ lanes with the most drawn structure waiting for you — start at
 
 ## ⚠️ Open decisions / risks
 
-- **The version-suffix question is reframed, not answered.** The `SARB ISO 20022 Suffix
-  Verification` paper (2026-07-27) established that SARB publishes *computationally enforceable
-  XSDs* via SWIFT MyStandards — there is no static version to look up, and the paper's own version
-  table is explicitly illustrative. So `pacs.008.001.08` / `camt.053.001.08` / `pain.001.001.09`
-  remain **hypotheses**, with `pain.001`'s the weakest (absent from that table entirely). Writing
-  one into code as confirmed is a Non-negotiable I violation.
+- **DECIDED 2026-07-27 — we are not SARB PEM-conformant, and we say so.** SARB's Usage Guidelines
+  live on SWIFT MyStandards behind participant standing this project does not have. Rather than
+  block the message layer indefinitely, or adopt the reference paper's *illustrative* version table
+  as if it were authoritative (the Non-negotiable I violation the blocker existed to prevent), we
+  build against the **public ISO 20022 base catalogue** and state the boundary in SPEC.md, README.md
+  and `iso20022-messaging.md` §3.6. `schema-policy.yaml` carries it as data (`conformance.claim`,
+  `source` per context) and a build check enforces it. **This is a stated boundary, not a gap** —
+  don't "fix" it by quietly upgrading the claim.
+- **Consequence:** the structural-equivalence check (§3.3) is inert — we're using the permissive
+  base schema, so there's nothing constrained to compare against. The code stays and activates if
+  an export ever arrives. Where a SARB narrowing is cheap and safe we take it anyway
+  (`ChargeBearer` treated as mandatory); where it isn't, we don't invent one.
 - **A correct suffix is necessary but NOT sufficient.** A vendor file named `pacs.008.001.08.xsd`
   with the right namespace can still carry the permissive *base* ISO constraints rather than the
   SARB-constrained subset (e.g. `ChargeBearer` `[0..1]` vs `[1..1]`). It compiles, runs, and is
@@ -134,6 +139,11 @@ lanes with the most drawn structure waiting for you — start at
   a port is a *fidelity* task, its acceptance criterion is "indistinguishable from the PNG", and a
   session with no way to see its own output should have treated that task as blocked rather than
   reporting it done with the visual check deferred.
+- 2026-07-27 — Kirito (via Claude) — **Closed the MyStandards path deliberately.** Kirito chose the
+  public base-catalogue route: build real schemas and a real pipeline, and state plainly that this
+  is not SARB conformance. T031 is no longer blocked — it's now "vendor from iso20022.org with
+  provenance", and T032 threads the boundary through SPEC/README/design docs with a build check so
+  it can't erode. The whole `messaging` lane is unblocked.
 - 2026-07-27 — Kirito (via Claude) — Parsed `docs/reference/SARB ISO 20022 Suffix Verification.pdf`.
   It did **not** confirm the version suffixes — it established that there is nothing to confirm
   statically: SARB's authority is a MyStandards portal export, and the paper's own version table is
