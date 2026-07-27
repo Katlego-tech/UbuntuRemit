@@ -108,9 +108,11 @@ classDiagram
         +TransferId transferId
         +SettlementRail rail
         +string iso20022MessageId
+        +string businessApplicationHeaderXml
         +string payloadXml
         +Instant submittedAt
     }
+    note for SettlementInstruction "The BAH (head.001.001.xx) envelopes\nthe payload and is version-checked\nseparately - iso20022-messaging.md 3.4
 
     class AuditRecord {
         +TransferId transferId

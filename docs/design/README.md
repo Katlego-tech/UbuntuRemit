@@ -11,7 +11,7 @@ assistant can read and write them.
 | --- | --- | --- | --- |
 | `domain` | [domain-model.md](domain-model.md) | agreed | Class diagram for every core entity, the transfer state machine, invariants |
 | `asco` | [asco-orchestrator.md](asco-orchestrator.md) | agreed | Multi-agent negotiation sequence, the hybrid-guardrail component diagram, the agent handshake JSON contracts |
-| `iso20022` | [iso20022-messaging.md](iso20022-messaging.md) | agreed | pain.001 → pacs.008 → camt.053 mapping, field-level contract, validation gates |
+| `iso20022` | [iso20022-messaging.md](iso20022-messaging.md) | agreed | Schema-version governance (MyStandards → policy matrix → verification pipeline), pain.001 → pacs.008 → camt.053 mapping, validation gates |
 | `frontend-web` | [frontend-web.md](frontend-web.md) | agreed | Component tree, token mapping, visual references by path, deviations from the mockups |
 
 ## Reading order for a new session

@@ -191,30 +191,90 @@ Each user-story phase is ordered **Design → Tests FIRST (must FAIL) → Implem
 
 ## Phase 3 — Foundational: the message layer (US3, blocking)
 
-- [ ] T030 [FND] Vendor and pin the ISO 20022 XSDs.
-      Design:   docs/design/iso20022-messaging.md §2
+> **Read [docs/design/iso20022-messaging.md](docs/design/iso20022-messaging.md) §3 first.** The
+> version-suffix question is not a lookup with an answer — SARB publishes enforceable schemas
+> through SWIFT MyStandards, and until we have that export **every version number in the design is
+> a hypothesis**. `pacs.008.001.08` / `camt.053.001.08` / `pain.001.001.09` appear there marked
+> provisional for exactly this reason. Writing one into code as confirmed is a Non-negotiable I
+> violation, not a shortcut. Build the pipeline first; it is what makes the answer safe to adopt
+> whenever it arrives.
+
+### 3a — Schema governance (build this before any schema is vendored)
+
+- [ ] T028 [FND] Define the schema-policy matrix structure, unpopulated.
+      Design:   iso20022-messaging.md §3.5
+      Files:    `services/messaging/schema-policy.yaml`
+      Contract: `contexts.<samos|sadc_rtgs>.<businessArea.type.variant>.authorizedVersion`
+      Verify:   `pytest services/messaging/test_policy.py` — the loader rejects a malformed matrix
+      Done:     versions are keyed PER CLEARING CONTEXT (SAMOS and SADC-RTGS are separately
+                governed and may authorise different versions of the same message); the file
+                loads and is empty of real values, which is honest
+- [ ] T029 [FND] Failing tests for the schema-verification pipeline — one per stage in §3.4.
+      Verify:   `pytest services/messaging/test_verify_schema.py` — fails because the verifier
+                doesn't exist yet, not because it errors
+      Done:     a negative case per stage: typo'd URN base (`iso:2022`), suffix not in the matrix,
+                outdated `xs:import`, correctly-named-but-permissive base schema
+- [ ] T030 [FND] Implement the six-stage schema-verification pipeline.
+      Design:   iso20022-messaging.md §3.4 (the flowchart IS the spec)
+      Files:    `services/messaging/verify_schema.py`, `.githooks/pre-commit`,
+                `.github/workflows/ci.yml`
+      Contract: `verify_schema(path) -> Ok | Violation(stage, reason)`; non-zero exit aborts commit
+      Verify:   T029's suite green; staging a deliberately typo'd XSD aborts the commit
+      Done:     runs as BOTH a pre-commit hook and a CI job; stage 4 exact-matches
+                `^urn:iso:std:iso:20022:tech:xsd:` (the missing-zero typo is a known-common,
+                silently-catastrophic failure); stage 7 recurses `xs:import`/`xs:redefine` and
+                applies the same checks to every dependency, including the BAH
+      Note:     **not blocked** — the pipeline is fully specified without knowing the versions.
+                This is deliberately the first thing built, not the last.
+- [ ] T031 [FND] **BLOCKED** — obtain SWIFT MyStandards access to the SARB/PASA readiness portal
+      and populate `schema-policy.yaml` from the official export.
+      Blocked by: portal access. This is an ACCESS problem, not a research problem; no further
+                reading resolves it, and no amount of inference substitutes for the export.
+      Done:     `schema-policy.yaml` carries real authorised versions for `samos` and
+                `sadc_rtgs`, sourced from the export, with the export date recorded
+      Also:     resolve whether to target the SADC-RTGS **UG2026** release (November 2026) directly
+                rather than pinning to a version with a known expiry (iso20022-messaging.md §10)
+- [ ] T032 [FND] Vendor the XSDs, admitted through T030's pipeline.
       Files:    `services/messaging/schemas/`
-      Verify:   checksum test; the build fails if a schema file changes unreviewed
-      Done:     **exact version suffixes confirmed against the SARB PEM guide**, not guessed
-                (this task is BLOCKED on iso20022-messaging.md §9 question 1)
-- [ ] T031 [FND] Failing tests for pain.001 round-tripping.
+      Verify:   every file in the directory passes `verify_schema.py`; checksum test on each
+      Done:     structural equivalence to the MyStandards export asserted — NOT merely a matching
+                filename or suffix (§3.3: a permissive base schema with the right name compiles,
+                runs, and is rejected at the SARB gateway)
+      Blocked by: T031
+
+### 3b — The messages
+
+- [ ] T033 [FND] Add the Business Application Header to the domain model.
+      Design:   **changes** domain-model.md §3 first — `SettlementInstruction` needs a BAH
+                alongside `payloadXml`. The BAH was missing from the original design; it surfaced
+                from the verification paper. Doc PR before code PR.
+      Files:    `docs/design/domain-model.md`, then `services/messaging/bah.py`
+      Done:     `head.001.001.xx` vs `head.003.001.xx` decided and recorded, not assumed
+- [ ] T034 [FND] Failing tests for pain.001 round-tripping.
       Verify:   `pytest services/messaging` — fails because the builder doesn't exist
-      Done:     one test per mapped field in iso20022-messaging.md §4
-- [ ] T032 [FND] Build + parse pain.001, with the §4 mapping expressed as data, not branches.
+      Done:     one test per mapped field in iso20022-messaging.md §5
+- [ ] T035 [FND] Build + parse pain.001, with the §5 mapping expressed as data, not branches.
       Contract: `build_pain001(Transfer) -> str`, `parse_pain001(str) -> Transfer`
-      Verify:   `pytest services/messaging` green; XSD conformance on the golden message
-      Done:     round-trip lossless for every mapped field; amounts are decimal strings from
-                minor units, never floats
-- [ ] T033 [P] [FND] pacs.008 builder, same shape.
-- [ ] T034 [P] [FND] camt.053 parser + reconciliation against `Transfer.reference`.
+      Verify:   `pytest services/messaging` green; XSD conformance against the ADMITTED schema
+      Done:     round-trip lossless for every mapped field; amounts are decimal strings derived
+                from minor units, never floats; `ChrgBr` treated as mandatory rather than relying
+                on the base schema's `[0..1]` permissiveness (§3.3)
+- [ ] T036 [P] [FND] pacs.008 builder, same shape.
+- [ ] T037 [P] [FND] camt.053 parser + reconciliation against `Transfer.reference`.
       Done:     a one-minor-unit mismatch leaves the transfer unreconciled and raises — it does
                 NOT mark it delivered
-- [ ] T035 [FND] The three validation gates (XSD → field rules → business rules).
-      Design:   docs/design/iso20022-messaging.md §5
+- [ ] T038 [FND] `SplmtryData` handling — `PlcAndNm` + `Envlp`, against the SARB envelope schema.
+      Design:   iso20022-messaging.md §5
+      Done:     `SourceOfFunds` rides in `SplmtryData`, never `Purp/Cd`; no local requirement is
+                implemented by altering a base ISO element (that breaks the ignore-safely contract
+                the standard guarantees via `processContents="skip"`)
+- [ ] T039 [FND] The runtime validation gates (XSD → field rules → business rules).
+      Design:   iso20022-messaging.md §6B
       Verify:   one negative test per rejection reason, each asserting the *specific* rejection
       Done:     `EndToEndId` reuse is a hard rejection; no model participates in validation
 
-**Checkpoint:** a pain.001 can be accepted, validated, and turned into a conformant pacs.008.
+**Checkpoint:** the schema pipeline rejects every negative case in T029, and — once T031 unblocks —
+a pain.001 can be accepted, validated, and turned into a conformant pacs.008.
 
 ---
 

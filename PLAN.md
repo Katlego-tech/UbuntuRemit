@@ -117,8 +117,9 @@ Mirrors [TASKS.md](TASKS.md). Each phase is independently demoable at its checkp
 
 0. **Design** — domain model + one design doc per lane. ✅ done.
 1. **Setup** — repo scaffold, web app, CI, hooks. 🔄 in progress.
-2. **Foundational** — the ISO 20022 message layer and the domain services. Nothing negotiates until
-   a pain.001 can be parsed and a pacs.008 emitted.
+2. **Foundational** — schema governance first (the verification pipeline, which needs no version
+   numbers to build), then the ISO 20022 message layer. Nothing negotiates until a pain.001 can be
+   parsed and a pacs.008 emitted.
 3. **US2** — the ASCO negotiation loop with both guardrail sets, against stub rail quotes.
 4. **US3/US4** — real rail adapters, the audit pipeline, camt.053 reconciliation.
 5. **US1/US5** — wire the web client to real endpoints; the remaining wizard steps and the

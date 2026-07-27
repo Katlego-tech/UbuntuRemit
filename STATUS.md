@@ -32,7 +32,7 @@ _Last updated: 2026-07-27 — by Kirito (via Claude)_
 |------|-------|----|--------|
 | `design` | Kirito | Claude | ✅ done — all four design docs merged |
 | `frontend-web` | Kirito | Claude | ✅ the Stitch export ships as-is from `apps/web/` — approved |
-| `messaging` | — | — | 🟡 unclaimed — T030 is **blocked** (see Open decisions) |
+| `messaging` | — | — | 🟡 unclaimed — T028–T030 (schema pipeline) are **ready to start**; T031/T032 blocked on portal access |
 | `asco` | — | — | ⬜ unclaimed, blocked on Phase 3 |
 | `infra` | — | — | ⬜ unclaimed — T008 (CI) is the next thing anyone can pick up |
 
@@ -48,7 +48,13 @@ lanes with the most drawn structure waiting for you — start at
    third-party requests per settlement screen is a real defect, not a nitpick. Must have zero
    visual effect — verify against the PNGs.
 2. **T008 — CI workflow.** The pre-push hook exists and is wired; CI does not.
-3. **Unblock T030** by confirming the ISO 20022 version suffixes against the SARB PEM guide.
+3. **T028–T030 — build the schema-verification pipeline.** This is now the highest-value
+   unblocked work: it needs no version numbers to build, and it is what makes the versions safe to
+   adopt whenever the MyStandards export arrives. Design is complete in
+   `docs/design/iso20022-messaging.md` §3.4.
+4. **Request SWIFT MyStandards access** to the SARB/PASA readiness portal (T031). This is the only
+   remaining unknown on the whole message layer, and it is an *access* problem — no further reading
+   resolves it.
 
 ## 🗓️ Timeline to `TBD`
 
@@ -83,10 +89,21 @@ lanes with the most drawn structure waiting for you — start at
 
 ## ⚠️ Open decisions / risks
 
-- **T030 is blocked:** the Feasibility Paper names the ISO 20022 message *types* but not their
-  version suffixes. `pain.001.001.09` / `pacs.008.001.08` / `camt.053.001.08` are this design's
-  targets and **must be confirmed against the SARB PEM implementation guide** before anything is
-  submitted. Guessing a version is a Non-negotiable I violation.
+- **The version-suffix question is reframed, not answered.** The `SARB ISO 20022 Suffix
+  Verification` paper (2026-07-27) established that SARB publishes *computationally enforceable
+  XSDs* via SWIFT MyStandards — there is no static version to look up, and the paper's own version
+  table is explicitly illustrative. So `pacs.008.001.08` / `camt.053.001.08` / `pain.001.001.09`
+  remain **hypotheses**, with `pain.001`'s the weakest (absent from that table entirely). Writing
+  one into code as confirmed is a Non-negotiable I violation.
+- **A correct suffix is necessary but NOT sufficient.** A vendor file named `pacs.008.001.08.xsd`
+  with the right namespace can still carry the permissive *base* ISO constraints rather than the
+  SARB-constrained subset (e.g. `ChargeBearer` `[0..1]` vs `[1..1]`). It compiles, runs, and is
+  rejected at the SARB gateway. Verification must assert structural equivalence.
+- **The BAH was missing from our design.** Every message is enveloped by a Business Application
+  Header (`head.001.001.xx`), itself version-governed and pulled in via `xs:import`. `domain-model.md`
+  §3 now carries it on `SettlementInstruction`; which header and which version is open (T033).
+- **UG2026 lands November 2026** for SADC-RTGS — within months. An argument for versions as
+  refreshed data, never literals in source.
 - **Four screens have no visual reference** — wizard steps 1/3/4 and Dashboard. They are
   deliberately not implemented, and their nav links stay dead rather than pointing at an invented
   page. Designing them is T021/T022. Do not "just build" them from the step-2 page by analogy.
@@ -117,6 +134,13 @@ lanes with the most drawn structure waiting for you — start at
   a port is a *fidelity* task, its acceptance criterion is "indistinguishable from the PNG", and a
   session with no way to see its own output should have treated that task as blocked rather than
   reporting it done with the visual check deferred.
+- 2026-07-27 — Kirito (via Claude) — Parsed `docs/reference/SARB ISO 20022 Suffix Verification.pdf`.
+  It did **not** confirm the version suffixes — it established that there is nothing to confirm
+  statically: SARB's authority is a MyStandards portal export, and the paper's own version table is
+  illustrative. Restructured `iso20022-messaging.md` around schema governance (new §3), split
+  validation into schema-admission vs. runtime (§6), added the BAH to `domain-model.md`, and
+  reordered Phase 3 so the verification pipeline (T028–T030, unblocked) is built before any schema
+  is vendored. T031 is now the single blocker and it is an access request, not research.
 - 2026-07-27 — Kirito (via Claude) — Amended the Cultivation kit itself (design-documentation
   doctrine, contract-shaped tasks, no-placeholder rules in AGENTS §2a and every entry point) and
   bootstrapped this repo from the amended version.
