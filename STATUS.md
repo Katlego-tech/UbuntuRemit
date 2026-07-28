@@ -3,7 +3,7 @@
 > Source of truth for "what's going on right now." Read first, update last. Treat updating it as
 > part of "done."
 
-_Last updated: 2026-07-27 — by Kirito (via Claude)_
+_Last updated: 2026-07-28 — by Kirito (via Claude)_
 
 ---
 
@@ -31,7 +31,7 @@ _Last updated: 2026-07-27 — by Kirito (via Claude)_
 | Lane | Owner | AI | Status |
 |------|-------|----|--------|
 | `design` | Kirito | Claude | ✅ done — all four design docs merged |
-| `frontend-web` | Kirito | Claude | ✅ the Stitch export ships as-is from `apps/web/` — approved |
+| `frontend-web` | Kirito | Claude | 🔄 6 pages ship; the 3 composed wizard steps await visual sign-off (T027) |
 | `messaging` | — | — | 🟢 unclaimed and **fully unblocked** — T028–T032 all ready to start |
 | `asco` | — | — | ⬜ unclaimed, blocked on Phase 3 |
 | `infra` | — | — | ⬜ unclaimed — T008 (CI) is the next thing anyone can pick up |
@@ -42,17 +42,21 @@ lanes with the most drawn structure waiting for you — start at
 
 ## ⏭️ Next action
 
-1. **T024 — self-host the frontend's external dependencies.** The pages currently pull Tailwind
+1. **T027 — walk the send-money flow and look at it.** Steps 1, 3 and 4 were composed on
+   2026-07-28 with no PNG to check against, by a session that couldn't see its own output. Serve
+   `apps/web`, click 1 → 2 → 3 → 4 and back. This is the shortest task on the board and the one
+   holding up the most.
+2. **T024 — self-host the frontend's external dependencies.** The pages currently pull Tailwind
    from `cdn.tailwindcss.com` (which compiles CSS *in the browser*), fonts from Google, and the
    avatar from `googleusercontent.com`. For a product whose premise is data sovereignty, three
    third-party requests per settlement screen is a real defect, not a nitpick. Must have zero
    visual effect — verify against the PNGs.
-2. **T008 — CI workflow.** The pre-push hook exists and is wired; CI does not.
-3. **T028–T030 — build the schema-verification pipeline.** This is now the highest-value
+3. **T008 — CI workflow.** The pre-push hook exists and is wired; CI does not.
+4. **T028–T030 — build the schema-verification pipeline.** This is now the highest-value
    unblocked work: it needs no version numbers to build, and it is what makes the versions safe to
    adopt whenever the MyStandards export arrives. Design is complete in
    `docs/design/iso20022-messaging.md` §3.4.
-4. **T031/T032 — vendor the base-catalogue schemas and state the conformance boundary.** Versions
+5. **T031/T032 — vendor the base-catalogue schemas and state the conformance boundary.** Versions
    are extracted from each XSD's own `targetNamespace` at download, never hand-typed.
 
 ## 🗓️ Timeline to `TBD`
@@ -74,8 +78,13 @@ lanes with the most drawn structure waiting for you — start at
   `.claude/` agents + `/feature-dev`, `.githooks/pre-push` with `core.hooksPath` set.
 - **Four design docs** in `docs/design/` — domain model (class diagram + state machine), ASCO
   orchestrator (sequence + component + agent JSON contracts), ISO 20022 mapping, frontend.
-- **`apps/web`** — the approved Stitch export, served as static HTML. Three pages plus an
-  `index.html` redirect; nine `href`s wired between them and nothing else changed.
+- **`apps/web`** — six pages of static HTML, no build step.
+  - **Exported (PNG-backed):** `send-money.html` (wizard step 2), `compliance.html`, `wallet.html`.
+    Unchanged from the Stitch export apart from link wiring.
+  - **Composed (no PNG):** `send-amount.html`, `send-compliance.html`, `send-review.html` — the
+    three wizard steps that were never exported, built 2026-07-28 from the design system and the
+    exported pages' vocabulary. Chrome copied byte-for-byte from step 2 by script and verified
+    identical. **Not yet visually signed off (T027).**
 - **`legacy/stitch-mockups/`** — the frozen visual reference, with a README on why it's kept.
 - **`docs/reference/`** — the three ASCO PDFs.
 
@@ -109,9 +118,12 @@ lanes with the most drawn structure waiting for you — start at
   §3 now carries it on `SettlementInstruction`; which header and which version is open (T033).
 - **UG2026 lands November 2026** for SADC-RTGS — within months. An argument for versions as
   refreshed data, never literals in source.
-- **Four screens have no visual reference** — wizard steps 1/3/4 and Dashboard. They are
-  deliberately not implemented, and their nav links stay dead rather than pointing at an invented
-  page. Designing them is T021/T022. Do not "just build" them from the step-2 page by analogy.
+- **Wizard steps 1/3/4 are built but unverified.** The project leader authorised expanding the UI
+  on 2026-07-27, which is what unblocked T021 — the earlier "stop and say so" rule wasn't wrong,
+  it was waiting on exactly that authorisation. They have no PNG, so `send-money.html` and
+  `compliance.html` are the reference, and **T027 (a human looking at them) is outstanding.**
+- **Dashboard still has no reference and is still not built** (T022). Its nav link stays dead
+  rather than pointing at an invented page. Same authorisation applies; nobody has started it.
 - **The frontend pages carry static mockup figures** (T025 replaces them). This is the one
   sanctioned exception to the no-placeholder rule, and it's honest: nothing on those pages claims
   to be a live rate, balance, or verdict.
@@ -127,6 +139,13 @@ lanes with the most drawn structure waiting for you — start at
 
 ## 🗒️ Log
 
+- 2026-07-28 — Kirito (via Claude) — Built wizard steps 1, 3 and 4 (`send-amount`,
+  `send-compliance`, `send-review`) on the leader's authorisation to expand the UI. Design first
+  (`docs/design/send-money-wizard.md`), then generation: chrome spliced byte-for-byte from step 2
+  by script rather than re-typed, so the three pages cannot drift from it. No new component,
+  colour or spacing value invented. Step 3 renders the ASCO negotiation agent-by-agent with cited
+  rules as a first-class element — the product claim is explicability, and a spinner explains
+  nothing. **Stated before delivery this time: these are visually unverified (T027).**
 - 2026-07-27 — Kirito (via Claude) — Bootstrapped the repo from the Cultivation kit. Froze the
   Stitch export into `legacy/`, moved the three ASCO PDFs into `docs/reference/`.
 - 2026-07-27 — Kirito (via Claude) — Wrote the four design docs in `docs/design/` before any

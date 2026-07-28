@@ -176,14 +176,33 @@ Each user-story phase is ordered **Design → Tests FIRST (must FAIL) → Implem
       Done:     findings written up in frontend-web.md §10 with a fix task each — the export has
                 no focus-visible styling, unlabelled decorative icons, and a colour-only chart
 
-- [ ] T021 [US1] **Design** wizard steps 1 (Amount), 3 (Compliance) and 4 (Review).
-      Design:   produces `docs/design/send-money-wizard.md` — there is currently NO visual
-                reference for these three steps (frontend-web.md §10)
-      Done:     a merged design doc with a named visual reference; only then may build tasks be
-                written. Do not build these from the step-2 page by analogy.
-- [ ] T022 [US5] **Design** the Dashboard screen — no Stitch export exists for it, and its nav
-      link is deliberately dead rather than pointing at an invented page.
-      Done:     merged design doc + visual reference; the build task is written afterwards
+- [x] T021 [US1] Design + build wizard steps 1 (Amount), 3 (Compliance) and 4 (Review).
+      Design:   `docs/design/send-money-wizard.md`
+      Files:    `apps/web/send-amount.html`, `send-compliance.html`, `send-review.html`;
+                `send-money.html` Back/Continue wired; `index.html` redirect moved to step 1
+      Done:     chrome copied byte-for-byte from step 2 by script (verified identical head and
+                tail); ribbon state correct on each page; every link resolves; no new component,
+                colour or spacing value invented; no new copy overclaims (§3.6)
+      Note:     Authorised by the project leader on 2026-07-27 ("expand the UI along the line it
+                is on now"), which is what unblocked this. Previously the rule was "stop and say
+                so" — the authorisation is the difference, not a change of mind about the rule.
+- [ ] T027 [US1] **Visually verify the three composed wizard steps.**
+      Design:   send-money-wizard.md §9
+      Verify:   serve `apps/web`, walk step 1 → 2 → 3 → 4 and back; the chrome must not shift
+                between steps, and 1/3/4 must read as the same product as 2 and `compliance.html`
+      Done:     a human has looked. Until then these are the only pages in the repo with no
+                reference image AND no visual sign-off — send-money-wizard.md §2 says so, and it
+                stays said until this task closes.
+      Why:      the session that built them could not see its own output. That is the exact
+                condition that produced the reverted React port (frontend-web.md §8); stating it
+                before delivery rather than after is the corrected behaviour, not an excuse.
+- [ ] T022 [US5] **Design + build** the Dashboard screen — no Stitch export exists for it, and its
+      nav link is still deliberately dead rather than pointing at an invented page.
+      Design:   produces `docs/design/dashboard.md`; compose from the existing vocabulary the way
+                the wizard steps were, and copy the console chrome from `compliance.html`
+      Done:     merged design doc, then the page, then the nav links across all six pages point
+                at it; visually verified like T027
+      Note:     unblocked by the same authorisation as T021 — not yet started
 
 **Checkpoint:** the three pages serve with no external hosts and no static figure presented as live.
 

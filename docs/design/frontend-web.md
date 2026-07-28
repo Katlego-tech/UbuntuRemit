@@ -38,17 +38,22 @@ list govern any new UI.
 
 ```mermaid
 flowchart TD
-    IDX["index.html<br/>(redirect only)"] --> SM
+    IDX["index.html<br/>(redirect only)"] --> S1
 
-    subgraph pages["apps/web — one self-contained file per screen"]
-        SM["send-money.html<br/>wizard step 2"]
+    subgraph wiz["the send-money flow — composed, no PNG"]
+        S1["send-amount.html<br/>1 Amount"]
+        S2["send-money.html<br/>2 Recipient — EXPORTED"]
+        S3["send-compliance.html<br/>3 Compliance"]
+        S4["send-review.html<br/>4 Review"]
+    end
+
+    subgraph con["the consoles — exported, PNG-backed"]
         CD["compliance.html<br/>health dashboard"]
         WH["wallet.html<br/>wallet &amp; history"]
     end
 
-    SM <--> CD
-    CD <--> WH
-    WH <--> SM
+    S1 --> S2 --> S3 --> S4 --> WH
+    con <--> wiz
 
     subgraph inline["inlined in every file (duplicated on purpose)"]
         TOK["tailwind.config block<br/>— the token palette"]
@@ -104,8 +109,11 @@ The endpoints are listed in [asco-orchestrator.md](asco-orchestrator.md) §5 and
 
 | Path | Responsibility |
 | --- | --- |
-| `apps/web/index.html` | Redirect to `send-money.html`. No UI. |
-| `apps/web/send-money.html` | Wizard step 2 — self-contained |
+| `apps/web/index.html` | Redirect to `send-amount.html`. No UI. |
+| `apps/web/send-amount.html` | Wizard step 1 — composed, no PNG |
+| `apps/web/send-money.html` | Wizard step 2 — **exported**, PNG-backed |
+| `apps/web/send-compliance.html` | Wizard step 3 — composed, no PNG |
+| `apps/web/send-review.html` | Wizard step 4 — composed, no PNG |
 | `apps/web/compliance.html` | Compliance dashboard — self-contained |
 | `apps/web/wallet.html` | Wallet & history — self-contained |
 | `apps/web/README.md` | How to serve it, what was changed, the rules |
@@ -115,7 +123,7 @@ The endpoints are listed in [asco-orchestrator.md](asco-orchestrator.md) §5 and
 
 | Decision | Chosen | Rejected, and why |
 | --- | --- | --- |
-| **Framework** | **none — ship the exported HTML** | React/Vite/Tailwind v4 port. It was built, and rejected on sight for not looking like the mockups. The export already *is* the approved design; re-expressing it in components put the one thing that mattered — fidelity — at risk for benefits (state, reuse) nothing needs yet |
+| **Framework** | **none — ship the exported HTML, compose new pages in the same idiom** | React/Vite/Tailwind v4 port. It was built, and rejected on sight for not looking like the mockups. The export already *is* the approved design; re-expressing it in components put the one thing that mattered — fidelity — at risk for benefits (state, reuse) nothing needs yet |
 | Shared chrome | duplicated per file | partials/templating — introduces a build step for three pages, and every extraction is a chance to drift from the reference |
 | Nav links | 9 `href`s wired between existing pages | leaving them all `#` — three disconnected files aren't an app |
 | Dashboard / Settings / Support links | left dead | pointing them somewhere — there is no design for those screens, and inventing one is the failure AGENTS.md §2a names |
@@ -145,9 +153,10 @@ Recorded here because the process is supposed to absorb this kind of failure rat
 
 ## 10. Open questions
 
-- [ ] **Wizard steps 1 (Amount), 3 (Compliance) and 4 (Review) have no visual reference** — only
-      step 2 was exported. The ribbon shows the real four-step flow. Designing them is **T021**;
-      an assistant asked to "build step 3" before that exists should stop and say so.
+- [x] ~~Wizard steps 1, 3 and 4 have no visual reference~~ — **built 2026-07-27** on the project
+      leader's authorisation, designed in [send-money-wizard.md](send-money-wizard.md). They remain
+      the only pages in the repo with **no PNG to check against**, and are **visually unverified**.
+      That doc's §2 and §9 carry the gap; don't let it quietly become "done".
 - [ ] **`/dashboard` has no visual reference** either — the nav lists it, no screen was exported.
       Its link is dead rather than pointing at an invented page. **T022**.
 - [ ] `Settings` and `Support` — same treatment.

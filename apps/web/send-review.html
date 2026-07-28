@@ -3,7 +3,7 @@
 <html class="light" lang="en"><head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>UbuntuRemit - Send Money</title>
+<title>UbuntuRemit - Send Money - Review</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
@@ -114,85 +114,114 @@
 </div>
 <div class="flex flex-col items-center gap-2 group">
 <div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center shadow-lg ring-4 ring-background">
-<span class="font-bold text-sm">2</span>
+<span class="material-symbols-outlined text-sm" data-icon="check" style="font-variation-settings: 'FILL' 1;">check</span>
 </div>
 <span class="text-xs font-bold text-primary font-headline">Recipient</span>
 </div>
 <div class="flex flex-col items-center gap-2 group">
-<div class="w-10 h-10 rounded-full bg-surface-dim text-on-surface-variant flex items-center justify-center ring-4 ring-background">
-<span class="font-bold text-sm">3</span>
+<div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center shadow-lg ring-4 ring-background">
+<span class="material-symbols-outlined text-sm" data-icon="check" style="font-variation-settings: 'FILL' 1;">check</span>
 </div>
-<span class="text-xs font-semibold text-on-surface-variant font-headline">Compliance</span>
+<span class="text-xs font-bold text-primary font-headline">Compliance</span>
 </div>
 <div class="flex flex-col items-center gap-2 group">
-<div class="w-10 h-10 rounded-full bg-surface-dim text-on-surface-variant flex items-center justify-center ring-4 ring-background">
+<div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center shadow-lg ring-4 ring-background">
 <span class="font-bold text-sm">4</span>
 </div>
-<span class="text-xs font-semibold text-on-surface-variant font-headline">Review</span>
+<span class="text-xs font-bold text-primary font-headline">Review</span>
 </div>
 </div>
 <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-<!-- Left Column: Transfer Form -->
+<!-- Left Column: Review -->
 <div class="lg:col-span-7 space-y-6">
 <div class="bg-surface-container-lowest p-8 rounded-[1.5rem] shadow-sm">
-<h1 class="text-2xl font-black text-primary font-headline mb-6 tracking-tight">Recipient Details</h1>
+<h1 class="text-2xl font-black text-primary font-headline mb-6 tracking-tight">Review &amp; Confirm</h1>
 <div class="space-y-6">
-<div class="space-y-2">
-<label class="text-sm font-bold text-on-surface-variant ml-1">Destination Country</label>
-<div class="flex items-center gap-4 p-4 bg-surface-container-high rounded-xl">
-<span class="material-symbols-outlined text-secondary" data-icon="public">public</span>
-<select class="bg-transparent border-none focus:ring-0 w-full font-semibold text-on-surface">
-<option>Kenya (KES)</option>
-<option>Nigeria (NGN)</option>
-<option>Ghana (GHS)</option>
-</select>
+<div class="p-6 bg-surface-container-low rounded-xl">
+<h3 class="font-black text-primary font-headline uppercase tracking-wider text-xs mb-4">Recipient</h3>
+<div class="space-y-3">
+<div class="flex justify-between items-center gap-4 text-sm">
+<span class="text-on-surface-variant">Full Name</span>
+<span class="font-bold text-on-surface text-right">Kofi Mensah</span>
+</div>
+<div class="flex justify-between items-center gap-4 text-sm">
+<span class="text-on-surface-variant">Account Number</span>
+<span class="font-bold text-on-surface text-right">00129384812</span>
+</div>
+<div class="flex justify-between items-center gap-4 text-sm">
+<span class="text-on-surface-variant">Destination</span>
+<span class="font-bold text-on-surface text-right">Kenya (KES)</span>
 </div>
 </div>
-<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-<div class="space-y-2">
-<label class="text-sm font-bold text-on-surface-variant ml-1">Full Name</label>
-<input class="w-full p-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/40 font-medium" placeholder="e.g. Kofi Mensah" type="text"/>
 </div>
-<div class="space-y-2">
-<label class="text-sm font-bold text-on-surface-variant ml-1">Account Number / IBAN</label>
-<input class="w-full p-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/40 font-medium" placeholder="00129384812" type="text"/>
+<div class="p-6 bg-surface-container-low rounded-xl">
+<h3 class="font-black text-primary font-headline uppercase tracking-wider text-xs mb-4">Amount</h3>
+<div class="space-y-3">
+<div class="flex justify-between items-center gap-4 text-sm">
+<span class="text-on-surface-variant">Amount to Send</span>
+<span class="font-bold text-on-surface text-right">15,000.00 ZAR</span>
+</div>
+<div class="flex justify-between items-center gap-4 text-sm">
+<span class="text-on-surface-variant">Ubuntu Transfer Fee</span>
+<span class="font-bold text-primary text-right">0.00 ZAR</span>
+</div>
+<div class="flex justify-between items-center gap-4 text-sm">
+<span class="text-on-surface-variant">Exchange Rate</span>
+<span class="font-bold text-on-surface text-right">1 ZAR = 7.42 KES</span>
+</div>
+<div class="h-px bg-surface-variant my-2"></div>
+<div class="flex justify-between items-center">
+<span class="text-sm font-bold text-on-surface">Recipient Gets</span>
+<span class="text-xl font-black text-secondary font-headline">111,300.00 KES</span>
 </div>
 </div>
-<!-- Compliance Section -->
+</div>
+<div class="p-6 bg-surface-container-low rounded-xl">
+<h3 class="font-black text-primary font-headline uppercase tracking-wider text-xs mb-4">Declarations</h3>
+<div class="space-y-3">
+<div class="flex justify-between items-center gap-4 text-sm">
+<span class="text-on-surface-variant">Purpose of Payment</span>
+<span class="font-bold text-on-surface text-right">Family Support / Living Expenses</span>
+</div>
+<div class="flex justify-between items-center gap-4 text-sm">
+<span class="text-on-surface-variant">Source of Funds</span>
+<span class="font-bold text-on-surface text-right">Employment Salary</span>
+</div>
+</div>
+</div>
 <div class="mt-8 p-6 bg-surface-container-low rounded-xl border-l-4 border-secondary">
 <div class="flex items-center gap-3 mb-4">
-<span class="material-symbols-outlined text-secondary" data-icon="security" style="font-variation-settings: 'FILL' 1;">security</span>
-<h3 class="font-black text-primary font-headline uppercase tracking-wider text-xs">Compliance Details</h3>
+<span class="material-symbols-outlined text-secondary" data-icon="verified" style="font-variation-settings: 'FILL' 1;">verified</span>
+<h3 class="font-black text-primary font-headline uppercase tracking-wider text-xs">Settlement &amp; Messaging</h3>
 </div>
-<div class="space-y-4">
-<div class="space-y-2">
-<label class="text-sm font-bold text-on-surface-variant">Purpose of Payment</label>
-<select class="w-full p-3 bg-surface-container-lowest border-none rounded-lg focus:ring-2 focus:ring-primary/40 text-sm font-medium">
-<option>Family Support / Living Expenses</option>
-<option>Business Investment / Capital Injection</option>
-<option>Purchase of Goods or Services</option>
-<option>Educational Fees</option>
-<option>Medical Expenses</option>
-</select>
+<div class="space-y-3">
+<div class="flex justify-between items-center gap-4 text-sm">
+<span class="text-on-surface-variant">Selected Rail</span>
+<span class="font-bold text-on-surface text-right">Ripple &mdash; est. 3.2s</span>
 </div>
-<div class="space-y-2">
-<label class="text-sm font-bold text-on-surface-variant">Source of Funds</label>
-<select class="w-full p-3 bg-surface-container-lowest border-none rounded-lg focus:ring-2 focus:ring-primary/40 text-sm font-medium">
-<option>Employment Salary</option>
-<option>Business Revenue</option>
-<option>Savings</option>
-</select>
+<div class="flex justify-between items-center gap-4 text-sm">
+<span class="text-on-surface-variant">Compliance Verdict</span>
+<span class="font-bold text-on-surface text-right">Pass &mdash; 3 rules cited</span>
+</div>
+<div class="flex justify-between items-center gap-4 text-sm">
+<span class="text-on-surface-variant">ISO 20022 Message</span>
+<span class="font-bold text-on-surface text-right">pain.001 prepared</span>
+</div>
+<div class="flex justify-between items-center gap-4 text-sm">
+<span class="text-on-surface-variant">End-to-End ID</span>
+<span class="font-bold text-on-surface text-right">UB-99420-X</span>
 </div>
 </div>
+<p class="text-[10px] text-on-surface-variant leading-relaxed mt-4">Messages are built and validated against the ISO 20022 base catalogue. This transfer has not been validated against SARB Usage Guidelines.</p>
 </div>
 </div>
 <div class="mt-10 flex justify-between items-center">
-<a class="px-6 py-3 text-primary font-bold hover:bg-surface-container transition-colors rounded-xl" href="send-amount.html">Back</a>
-<a class="px-10 py-4 bg-gradient-to-br from-primary to-primary-container text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all active:scale-95" href="send-compliance.html">Continue to Compliance</a>
+<a class="px-6 py-3 text-primary font-bold hover:bg-surface-container transition-colors rounded-xl" href="send-compliance.html">Back</a>
+<a class="px-10 py-4 bg-gradient-to-br from-primary to-primary-container text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all active:scale-95" href="wallet.html">Confirm &amp; Send</a>
 </div>
 </div>
 </div>
-<!-- Right Column: Live Rates & Ripple Settlement -->
+<!-- Right Column: Live Rates & Settlement Context -->
 <div class="lg:col-span-5 space-y-6">
 <!-- Live FX Rates Card -->
 <div class="bg-surface-container-high p-6 rounded-[1.5rem] relative overflow-hidden">
