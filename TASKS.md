@@ -123,10 +123,16 @@ Each user-story phase is ordered **Design → Tests FIRST (must FAIL) → Implem
       that it is the visual reference, not code.
 - [x] T007 [SET] Serve the approved Stitch export from `apps/web/` (`send-money.html`,
       `compliance.html`, `wallet.html`, plus an `index.html` redirect). Static files, no build step.
-- [x] T008 [SET] CI workflow re-running the pre-push gate.
+- [ ] T008 [SET] CI workflow re-running the pre-push gate.
       Files:    `.github/workflows/ci.yml`
       Verify:   a PR shows the check; a deliberately broken link turns it red
       Done:     CI is required on `main` and green on the scaffold
+      Status:   **written, not yet demonstrated.** The workflow exists and PR #1 shows all three
+                checks. Every job so far has died in `Set up job` with "Failed to resolve action
+                download info: Service Unavailable" — an open GitHub Actions incident (partial
+                outage, 2026-08-06 15:22 UTC), not a fault in the workflow. The same checks pass
+                locally through `.githooks/pre-push`. **Not done until a run goes green**, and
+                "required on `main`" additionally needs T016.
 - [ ] T009 [P] [SET] Link-and-markup check for `apps/web` in the gate: every `href` resolves to a
       file that exists (or is a deliberate `#` per frontend-web.md §8), and the HTML parses.
       Files:    `.githooks/pre-push`, `.github/workflows/ci.yml`

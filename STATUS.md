@@ -34,7 +34,7 @@ _Last updated: 2026-08-06 — by Kirito (via Claude)_
 | `frontend-web` | Kirito | Claude | 🔄 6 pages ship; the 3 composed wizard steps await visual sign-off (T027) |
 | `messaging` | — | — | 🟢 unclaimed and **fully unblocked** — T028–T032 all ready to start |
 | `asco` | — | — | ⬜ unclaimed, blocked on Phase 3 |
-| `infra` | Kirito | Claude | 🔄 toolchain + CI + compose landed on `chore/code-skeleton`; T016 (branch protection) needs Kirito |
+| `infra` | Kirito | Claude | 🔄 PR #1 — toolchain + compose verified; CI written but **never executed** (GitHub Actions outage), T016 needs Kirito |
 
 **Frontend lanes are Claude's by default** (AGENTS.md §1). Gemini: `messaging` and `asco` are the
 lanes with the most drawn structure waiting for you — start at
@@ -51,9 +51,12 @@ lanes with the most drawn structure waiting for you — start at
    avatar from `googleusercontent.com`. For a product whose premise is data sovereignty, three
    third-party requests per settlement screen is a real defect, not a nitpick. Must have zero
    visual effect — verify against the PNGs.
-3. **T016 — turn on branch protection for `main`.** Needs Kirito; it's a repo setting, not code.
-   CI now exists (T008 ✅), but until the checks are *required* server-side the gate is still
-   opt-in and one `--no-verify` away from being skipped.
+3. **T008 — get one CI run green.** The workflow is written and PR #1 shows all three checks, but
+   every job has died in `Set up job` on an open GitHub Actions outage (2026-08-06 15:22 UTC), so
+   it has never actually executed. Re-run when GitHub recovers. The same checks pass locally.
+4. **T016 — turn on branch protection for `main`.** Needs Kirito; it's a repo setting, not code.
+   Until the checks are *required* server-side, the gate is opt-in and one `--no-verify` away
+   from being skipped.
 4. **T028–T030 — build the schema-verification pipeline.** This is now the highest-value
    unblocked work: it needs no version numbers to build, and it is what makes the versions safe to
    adopt whenever the MyStandards export arrives. Design is complete in
@@ -148,7 +151,8 @@ lanes with the most drawn structure waiting for you — start at
 
 ## 🗒️ Log
 
-- 2026-08-06 — Kirito (via Claude) — **Code skeleton (T014, T015, T008).** uv workspace pinning
+- 2026-08-06 — Kirito (via Claude) — **Code skeleton (T014, T015; T008 written but unproven).**
+  uv workspace pinning
   Python 3.13.14 + ruff 0.16.1 + pytest 9.1.1; `docker-compose.yml` with Kafka 4.3.1 (KRaft) and
   Postgres 18.4, both verified healthy from cold; CI mirroring the pre-push hook. Every version was
   read off a release page or registry today, not recalled. Three things worth knowing:
