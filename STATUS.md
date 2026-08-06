@@ -3,7 +3,7 @@
 > Source of truth for "what's going on right now." Read first, update last. Treat updating it as
 > part of "done."
 
-_Last updated: 2026-07-28 — by Kirito (via Claude)_
+_Last updated: 2026-08-06 — by Kirito (via Claude)_
 
 ---
 
@@ -34,7 +34,7 @@ _Last updated: 2026-07-28 — by Kirito (via Claude)_
 | `frontend-web` | Kirito | Claude | 🔄 6 pages ship; the 3 composed wizard steps await visual sign-off (T027) |
 | `messaging` | — | — | 🟢 unclaimed and **fully unblocked** — T028–T032 all ready to start |
 | `asco` | — | — | ⬜ unclaimed, blocked on Phase 3 |
-| `infra` | — | — | ⬜ unclaimed — T008 (CI) is the next thing anyone can pick up |
+| `infra` | Kirito | Claude | 🔄 toolchain + CI + compose landed on `chore/code-skeleton`; T016 (branch protection) needs Kirito |
 
 **Frontend lanes are Claude's by default** (AGENTS.md §1). Gemini: `messaging` and `asco` are the
 lanes with the most drawn structure waiting for you — start at
@@ -51,7 +51,9 @@ lanes with the most drawn structure waiting for you — start at
    avatar from `googleusercontent.com`. For a product whose premise is data sovereignty, three
    third-party requests per settlement screen is a real defect, not a nitpick. Must have zero
    visual effect — verify against the PNGs.
-3. **T008 — CI workflow.** The pre-push hook exists and is wired; CI does not.
+3. **T016 — turn on branch protection for `main`.** Needs Kirito; it's a repo setting, not code.
+   CI now exists (T008 ✅), but until the checks are *required* server-side the gate is still
+   opt-in and one `--no-verify` away from being skipped.
 4. **T028–T030 — build the schema-verification pipeline.** This is now the highest-value
    unblocked work: it needs no version numbers to build, and it is what makes the versions safe to
    adopt whenever the MyStandards export arrives. Design is complete in
@@ -87,13 +89,20 @@ lanes with the most drawn structure waiting for you — start at
     identical. **Not yet visually signed off (T027).**
 - **`legacy/stitch-mockups/`** — the frozen visual reference, with a README on why it's kept.
 - **`docs/reference/`** — the three ASCO PDFs.
+- **Code skeleton** — uv workspace (`pyproject.toml`, `uv.lock`, `.python-version`),
+  `docker-compose.yml` (Kafka + Postgres, both verified healthy), `.github/workflows/ci.yml`, and a
+  pre-push hook that now actually runs. **`services/` is still empty** — see the Log entry for why.
 
 ## 🛠️ Environment & access
 
 - Web client: `python3 -m http.server 5173 --directory apps/web`. No install, no build, no
   dependencies. Its test is visual — each page beside its PNG in `legacy/stitch-mockups/`.
-- **Not yet provisioned:** the MI300X instance, Kafka, Postgres, any rail sandbox credentials.
-- No remote configured yet — `git remote add origin <url>` is still outstanding.
+- Python toolchain: `uv sync --frozen` (Python 3.13.14, ruff 0.16.1, pytest 9.1.1 — all locked).
+- Kafka + Postgres: `docker compose up -d`. Kafka on `localhost:29092`, Postgres on
+  **`localhost:55432`** (not 5432 — FrameFlow's db holds the default on this machine).
+- **Not yet provisioned:** the MI300X instance, any rail sandbox credentials.
+- Remote is `git@github.com:Katlego-tech/UbuntuRemit.git`. **Branch protection on `main` is still
+  off** (T016) — right now only the local, bypassable hook stands between anyone and a direct push.
 
 ## ⚠️ Open decisions / risks
 
@@ -139,6 +148,18 @@ lanes with the most drawn structure waiting for you — start at
 
 ## 🗒️ Log
 
+- 2026-08-06 — Kirito (via Claude) — **Code skeleton (T014, T015, T008).** uv workspace pinning
+  Python 3.13.14 + ruff 0.16.1 + pytest 9.1.1; `docker-compose.yml` with Kafka 4.3.1 (KRaft) and
+  Postgres 18.4, both verified healthy from cold; CI mirroring the pre-push hook. Every version was
+  read off a release page or registry today, not recalled. Three things worth knowing:
+  **(a)** `services/` is still empty on purpose — six directories holding an `__init__.py` is the
+  "empty component" §2a forbids, and placing the shared entities first needs the open question now
+  recorded in `domain-model.md` §9 (T017). **(b)** Two real defects fixed in `.githooks/pre-push`:
+  the placeholder sweep read `git diff --cached`, which is *always empty* at pre-push time, so it
+  had never scanned anything; and the Python gate probed an ambient `pytest` instead of the pinned
+  one. **(c)** `domain-model.md` §5–6 named `services/ledger|compliance|liquidity`, a topology no
+  other document uses — reconciled in its own commit before any code was written. LICENSE removed
+  at Kirito's request; README now states all-rights-reserved.
 - 2026-07-28 — Kirito (via Claude) — Built wizard steps 1, 3 and 4 (`send-amount`,
   `send-compliance`, `send-review`) on the leader's authorisation to expand the UI. Design first
   (`docs/design/send-money-wizard.md`), then generation: chrome spliced byte-for-byte from step 2

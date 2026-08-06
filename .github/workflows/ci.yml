@@ -1,0 +1,114 @@
+# T008 -- the server-side half of the gate.
+#
+# This runs the same checks as .githooks/pre-push. The hook is opt-in and
+# bypassable with --no-verify; this is not. If you change one, change the other.
+#
+# Action versions verified against their release pages on 2026-08-06.
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    name: lint + tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - uses: astral-sh/setup-uv@v9.0.0
+        with:
+          # .python-version pins the exact patch (3.13.14); uv.lock pins every
+          # dependency. --frozen below fails the build if either has drifted.
+          python-version-file: .python-version
+          enable-cache: true
+
+      - name: Install the locked toolchain
+        run: uv sync --frozen
+
+      - name: ruff check
+        run: uv run --frozen ruff check .
+
+      - name: ruff format --check
+        run: uv run --frozen ruff format --check .
+
+      - name: pytest
+        run: |
+          set +e
+          uv run --frozen pytest
+          rc=$?
+          set -e
+          # 5 == "no tests collected". True until the first service package
+          # lands (docs/project-structure.md). Any other non-zero is a failure.
+          if [ "$rc" -eq 5 ]; then
+            echo "::notice::No Python tests yet -- the workspace has no service packages."
+            exit 0
+          fi
+          exit $rc
+
+  web:
+    name: apps/web link check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      # apps/web is static HTML with no build step. Its real test is visual
+      # (each page beside its PNG in legacy/stitch-mockups/), which CI cannot
+      # do. This checks the one thing it can: every internal link resolves.
+      # Links left as "#" are deliberate -- docs/design/frontend-web.md 8.
+      - name: Every internal href resolves to a file that exists
+        run: |
+          broken=0
+          for page in apps/web/*.html; do
+            [ -f "$page" ] || continue
+            targets=$(grep -o 'href="[^"#][^"]*\.html"' "$page" \
+                        | sed -e 's/^href="//' -e 's/"$//' | sort -u)
+            for target in $targets; do
+              if [ ! -f "apps/web/$target" ]; then
+                echo "::error file=$page::broken link -> $target"
+                broken=1
+              fi
+            done
+          done
+          exit $broken
+
+  placeholders:
+    name: placeholder sweep
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      # AGENTS.md 2a: nothing ships with a stub standing in for real work.
+      # A task closed on a stub is BLOCKED, not done.
+      - name: No TODO / FIXME / NotImplementedError in the changed files
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            range="origin/${{ github.base_ref }}...HEAD"
+          else
+            range="${{ github.event.before }}..${{ github.sha }}"
+          fi
+          # .githooks/ and .github/ define the pattern being searched for, so
+          # they are excluded -- otherwise the gate always fails on itself.
+          files=$(git diff --name-only --diff-filter=ACM "$range" \
+                    | grep -Ev '^(legacy/|docs/|apps/web/src/mocks/|\.githooks/|\.github/|.*\.md$)' || true)
+          [ -n "$files" ] || { echo "No source files changed."; exit 0; }
+          existing=""
+          for f in $files; do [ -f "$f" ] && existing="$existing $f"; done
+          [ -n "$existing" ] || { echo "No source files remain."; exit 0; }
+          if grep -nE '\b(TODO|FIXME|NotImplementedError)\b' $existing; then
+            echo "::error::Placeholders found. AGENTS.md 2a -- that task is BLOCKED, not done."
+            exit 1
+          fi
+          echo "Clean."

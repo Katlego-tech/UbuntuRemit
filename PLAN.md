@@ -57,19 +57,20 @@ constitution and let this section be the single copy (see
 
 ## Technical Context
 
-> **The versions below are targets, not yet installed.** Confirm each against its release page
-> before the first `pyproject.toml` lands (architecture-defaults §5) — don't pin from memory. The
-> web client pins nothing because it has no dependencies to pin: it is static HTML.
+> **Versions below were verified against their release pages on 2026-08-06** and are pinned exactly
+> in `pyproject.toml` / `uv.lock` / `docker-compose.yml` (architecture-defaults §5). Don't bump one
+> from memory — re-verify. The web client pins nothing because it has no dependencies to pin: it is
+> static HTML.
 
 | Dimension | Value |
 | --- | --- |
-| **Language(s) + versions** | Python 3.13 target for services, **to confirm against ROCm 7.0 / vLLM support before pinning**. The web client has no language runtime — it is static HTML |
+| **Language(s) + versions** | **Python 3.13.14**, pinned in `.python-version` + `uv.lock`. Confirmed compatible with vLLM 0.26.0, whose `requires-python` is `>=3.10,<3.15`. 3.14.7 is the newer line, but the locked stack is 3.13 and swapping it needs a plan change. Toolchain: uv, ruff 0.16.1, pytest 9.1.1. The web client has no language runtime — it is static HTML |
 | **Architecture** | Microservices — one service per bounded context, Domain-Driven Design; financial-routing logic decoupled from LLM-inference logic so models can be swapped without touching banking rules |
-| **Messaging / async** | **Kafka** — chosen over RabbitMQ specifically because the SARB PEM audit trail needs retention and replay, which is Kafka's shape, not a work queue's (architecture-defaults §2) |
+| **Messaging / async** | **Kafka 4.3.1** (`apache/kafka:4.3.1`, KRaft — no ZooKeeper) — chosen over RabbitMQ specifically because the SARB PEM audit trail needs retention and replay, which is Kafka's shape, not a work queue's (architecture-defaults §2) |
 | **Frontend** | **Static HTML, no framework, no build step** — the approved Stitch export in `apps/web/`, served as-is. **Deviation from architecture-defaults §3 (shadcn/ui)**: a React port was built and reverted on 2026-07-27 for not matching the mockups; reasoning and the lesson are in [docs/design/frontend-web.md](docs/design/frontend-web.md) §8 |
 | **Containerization** | Docker per service + one `docker-compose.yml` for local dev (Kafka + Postgres + the services). The web client is static files behind a plain file server — no build, no runtime container |
 | **Runtime/deploy target** | AMD AI Developer Cloud — MI300X instance, ROCm 7.0, vLLM. Sovereign/on-prem deployment is the product requirement, not an option |
-| **Data layer** | Postgres per service where a service owns state; the audit store is append-only (no UPDATE/DELETE grant) |
+| **Data layer** | **Postgres 18.4** (`postgres:18.4-trixie`), one per service where a service owns state; the audit store is append-only (no UPDATE/DELETE grant) |
 | **Key external services/models** | Two open-weight models co-resident on one MI300X: 70B-class (Compliance Sentinel), 32B-class (Liquidity Strategist). Rails: Ripple, SWIFT, PAPSS. **No third-party LLM API, ever** |
 | **Testing** | pytest (services) · a determinism harness that replays a transfer 50× and asserts an identical rail and outcome. The web client's test is visual: each page beside its PNG in `legacy/stitch-mockups/` |
 | **Perf/cost goals** | Avg settlement ≈ 3 s on the Ripple corridor; agent negotiation ≤ 3 exchanges; FP8 quantisation adopted **only** after measuring reasoning degradation, never assumed |
@@ -93,8 +94,11 @@ UbuntuRemit/
 │   └── *.md                                  process docs from the Cultivation kit
 ├── apps/web/                                 static HTML client — the Stitch export, served as-is
 ├── legacy/stitch-mockups/                    frozen visual reference (do not edit)
-├── services/                                 gateway · asco · inference · messaging · audit (planned)
-└── docker-compose.yml                        (planned)
+├── pyproject.toml · uv.lock                  uv workspace root — pinned toolchain, lint + test config
+├── .python-version                           3.13.14, exact
+├── .github/workflows/ci.yml                  the gate, mirroring .githooks/pre-push
+├── services/                                 gateway · asco · inference · messaging · rails · audit (none built)
+└── docker-compose.yml                        Kafka + Postgres for local dev and integration tests
 ```
 
 ---

@@ -1,59 +1,119 @@
 #!/usr/bin/env bash
-# Pre-push gate: blocks direct pushes to main, runs whatever test tooling it finds.
-# Customize the loop below for your real project layout -- see docs/git-workflow.md.
+# Pre-push gate. Enable once per clone: git config core.hooksPath .githooks
+#
+# Blocks direct pushes to main, then runs the same checks CI runs
+# (.github/workflows/ci.yml). If you change one, change the other -- the whole
+# point of the pair is that they cannot disagree.
 set -u
+
 protected="refs/heads/main"
+root="$(git rev-parse --show-toplevel)"
+
+# Read the ref list once: the loop below consumes stdin, and the placeholder
+# sweep further down needs the same information to know what is being pushed.
+refs="$(cat)"
+
+pushed_range=""
 while read -r local_ref local_sha remote_ref remote_sha; do
+  [ -n "${local_ref:-}" ] || continue
   if [ "$remote_ref" = "$protected" ]; then
     echo "Direct pushes to 'main' are not allowed. Push a branch and open a PR."
     exit 1
   fi
-done
+  # A new branch reports the all-zero sha as its remote side; there is no
+  # remote history to diff against, so fall back to what main doesn't have.
+  if [ "$remote_sha" = "0000000000000000000000000000000000000000" ]; then
+    if base="$(git merge-base "$local_sha" "$protected" 2>/dev/null)"; then
+      pushed_range="$base..$local_sha"
+    else
+      pushed_range="$local_sha"
+    fi
+  else
+    pushed_range="$remote_sha..$local_sha"
+  fi
+done <<EOF
+$refs
+EOF
 
 echo "Running the test gate before push..."
 fail=0
-root="$(git rev-parse --show-toplevel)"
 
-for dir in "$root" "$root"/services/* "$root"/apps/*; do
-  [ -d "$dir" ] || continue
-  if { [ -f "$dir/pyproject.toml" ] || [ -f "$dir/requirements.txt" ]; } \
-      && python -c "import pytest" >/dev/null 2>&1; then
-    echo "-> pytest ($dir)"
-    ( cd "$dir" && python -m pytest -q ) || fail=1
-  fi
-  if [ -f "$dir/package.json" ] && [ -d "$dir/node_modules" ]; then
-    echo "-> npm test ($dir)"
-    ( cd "$dir" && npm test --silent --if-present ) || fail=1
-  fi
-done
+# --- Python: lint + tests -------------------------------------------------
+# Driven through `uv run`, not an ambient interpreter: the workspace pins
+# Python 3.13.14 and the exact tool versions, and a gate that silently uses
+# whatever python happens to be on PATH is not a gate.
+if [ -f "$root/pyproject.toml" ]; then
+  if command -v uv >/dev/null 2>&1; then
+    echo "-> ruff check"
+    ( cd "$root" && uv run --frozen ruff check . ) || fail=1
+    echo "-> ruff format --check"
+    ( cd "$root" && uv run --frozen ruff format --check . ) || fail=1
 
-# apps/web is static HTML with no build. Its real test is visual (each page beside its PNG in
-# legacy/stitch-mockups/), which a hook can't do -- so check the one thing it can: that every
-# internal link points at a file that exists. Links left as "#" are deliberate; see
-# docs/design/frontend-web.md section 8.
-if [ -d "$root/apps/web" ]; then
-  echo "-> apps/web link check"
-  for page in "$root"/apps/web/*.html; do
-    [ -f "$page" ] || continue
-    grep -o 'href="[^"#][^"]*\.html"' "$page" 2>/dev/null \
-      | sed -e 's/^href="//' -e 's/"$//' | sort -u \
-      | while read -r target; do
-          if [ ! -f "$root/apps/web/$target" ]; then
-            echo "   BROKEN: $(basename "$page") -> $target"
-            exit 1
-          fi
-        done || fail=1
-  done
+    echo "-> pytest"
+    ( cd "$root" && uv run --frozen pytest )
+    rc=$?
+    # 5 == "no tests collected". True today: the workspace has no service
+    # packages yet (docs/project-structure.md). It stops being true the moment
+    # the first service lands, and any other non-zero code is a real failure.
+    if [ "$rc" -eq 5 ]; then
+      echo "   no Python tests yet -- workspace has no service packages"
+    elif [ "$rc" -ne 0 ]; then
+      fail=1
+    fi
+  else
+    echo "!! uv is not installed, so the Python gate did not run."
+    echo "   Install it (https://docs.astral.sh/uv/) -- a skipped gate is not a passed gate."
+    fail=1
+  fi
 fi
 
-# The placeholder gate. AGENTS.md 2a: nothing ships with a stub standing in for real work.
-# apps/web/src/mocks is the one declared exception (it has replacement task IDs in its README).
+# --- apps/web: link check -------------------------------------------------
+# The export is static HTML with no build. Its real test is visual (each page
+# beside its PNG in legacy/stitch-mockups/), which a hook can't do -- so check
+# the one thing it can: every internal link points at a file that exists. Links
+# left as "#" are deliberate; see docs/design/frontend-web.md section 8.
+if [ -d "$root/apps/web" ]; then
+  echo "-> apps/web link check"
+  broken=0
+  for page in "$root"/apps/web/*.html; do
+    [ -f "$page" ] || continue
+    targets="$(grep -o 'href="[^"#][^"]*\.html"' "$page" 2>/dev/null \
+                | sed -e 's/^href="//' -e 's/"$//' | sort -u)"
+    for target in $targets; do
+      if [ ! -f "$root/apps/web/$target" ]; then
+        echo "   BROKEN: $(basename "$page") -> $target"
+        broken=1
+      fi
+    done
+  done
+  [ "$broken" -eq 0 ] || fail=1
+fi
+
+# --- placeholder sweep ----------------------------------------------------
+# AGENTS.md 2a: nothing ships with a stub standing in for real work.
+# Scans the commits actually being pushed. (It used to scan `git diff --cached`,
+# which at pre-push time is empty -- the sweep passed because it read nothing.)
 echo "-> placeholder sweep"
-if git diff --cached --name-only --diff-filter=ACM \
-   | grep -Ev '^(legacy/|docs/|apps/web/src/mocks/|.*\.md$)' \
-   | xargs -r grep -nE '\b(TODO|FIXME|NotImplementedError)\b' ; then
-  echo "Placeholders found in the staged diff. A task closed on a stub is BLOCKED, not done."
-  fail=1
+if [ -n "$pushed_range" ]; then
+  # .githooks/ and .github/ are excluded because they *define* the pattern being
+  # searched for -- the gate would otherwise always fail on itself.
+  files="$(git diff --name-only --diff-filter=ACM "$pushed_range" 2>/dev/null \
+            | grep -Ev '^(legacy/|docs/|apps/web/src/mocks/|\.githooks/|\.github/|.*\.md$)' || true)"
+  if [ -n "$files" ]; then
+    # Only look at files that still exist on the tip being pushed.
+    existing=""
+    for f in $files; do
+      [ -f "$root/$f" ] && existing="$existing $root/$f"
+    done
+    if [ -n "$existing" ]; then
+      # shellcheck disable=SC2086
+      if grep -nE '\b(TODO|FIXME|NotImplementedError)\b' $existing; then
+        echo "Placeholders found in the pushed commits."
+        echo "A task closed on a stub is BLOCKED, not done (AGENTS.md 2a)."
+        fail=1
+      fi
+    fi
+  fi
 fi
 
 if [ "$fail" -ne 0 ]; then

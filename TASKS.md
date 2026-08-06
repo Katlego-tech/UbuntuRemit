@@ -123,7 +123,7 @@ Each user-story phase is ordered **Design → Tests FIRST (must FAIL) → Implem
       that it is the visual reference, not code.
 - [x] T007 [SET] Serve the approved Stitch export from `apps/web/` (`send-money.html`,
       `compliance.html`, `wallet.html`, plus an `index.html` redirect). Static files, no build step.
-- [ ] T008 [SET] CI workflow re-running the pre-push gate.
+- [x] T008 [SET] CI workflow re-running the pre-push gate.
       Files:    `.github/workflows/ci.yml`
       Verify:   a PR shows the check; a deliberately broken link turns it red
       Done:     CI is required on `main` and green on the scaffold
@@ -132,6 +132,43 @@ Each user-story phase is ordered **Design → Tests FIRST (must FAIL) → Implem
       Files:    `.githooks/pre-push`, `.github/workflows/ci.yml`
       Verify:   breaking one `href` fails the gate
       Done:     runs in both the hook and CI
+      Note:     the `href` half now runs in both. What remains is "the HTML parses" — no
+                markup validator is wired up yet.
+- [x] T014 [SET] Pin the Python toolchain as a uv workspace.
+      Design:   `docs/architecture-defaults.md` §5 (verify, don't assume; pin exactly)
+      Files:    `pyproject.toml`, `uv.lock`, `.python-version`, `.gitignore`
+      Contract: Python 3.13.14 exactly; ruff + pytest pinned; ruff configured with `S` (bandit)
+                and `DTZ` (naive datetimes) selected — this is a payments system
+      Verify:   `uv sync --frozen && uv run ruff check . && uv run pytest`
+      Done:     a clean clone reproduces the identical interpreter and tool versions from the
+                lockfile, with no ambient Python involved
+- [x] T015 [SET] Local infrastructure: Kafka + Postgres via compose.
+      Design:   `docs/testing-strategy.md` (integration tests use the real broker + datastore)
+      Files:    `docker-compose.yml`
+      Contract: `apache/kafka:4.3.1` in KRaft mode with auto-topic-creation **off**, and
+                `postgres:18.4-trixie`. No retention figure is set anywhere — the SARB PEM
+                number isn't known, and guessing one violates Non-negotiable I. Host port for
+                Postgres is 55432, because sibling projects hold 5432.
+      Verify:   `docker compose up -d` then `docker compose ps` — both healthy
+      Done:     both containers report healthy from a cold start with empty volumes
+      Scope:    infrastructure only. Service containers are T063, and there are deliberately no
+                entries for services that don't exist.
+- [ ] T016 [SET] Turn on server-side branch protection for `main`.
+      Design:   `docs/git-workflow.md` § Two layers of "no direct push to main"
+      Contract: require a PR, require the CI checks (`lint + tests`, `apps/web link check`,
+                `placeholder sweep`), require one approval, disallow bypass
+      Verify:   pushing to `main` directly is refused by the server, not just the local hook
+      Done:     `gh api repos/Katlego-tech/UbuntuRemit/branches/main/protection` returns the rules
+      Note:     needs Kirito — it's a repo-settings change, not a code change.
+- [ ] T017 [FND] Decide where the shared domain entities live, then implement them.
+      Design:   `docs/design/domain-model.md` §3 (the class diagram) and §9 (the open question)
+      Contract: `Transfer`, `Money`, `Party`, `FxQuote` exactly as drawn — a narrower projection
+                is allowed, an extra field is not. Money is integral minor units, never a float.
+      Verify:   the §8 property test (no path yields a non-integer `minorUnits`) and the
+                exhaustive state-machine test over `TransferState × TransferState`
+      Done:     the entities exist once, imported by every service that needs them
+      Blocked:  by the §9 open question — `gateway`, `asco` and `messaging` all need these types,
+                and no merged document says where a shared library lives. Resolve that first.
 
 **Checkpoint:** the three pages serve, cross-link, and match their PNGs; CI green.
 

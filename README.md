@@ -95,4 +95,6 @@ UbuntuRemit/
 
 ## License
 
-See [LICENSE](LICENSE).
+None. This repository carries no licence, so default copyright applies: all
+rights reserved, and no permission to use, copy, modify or distribute is
+granted. Ask before reusing anything here.
