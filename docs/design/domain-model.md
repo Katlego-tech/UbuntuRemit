@@ -176,10 +176,10 @@ made finite so it can't loop against an RTGS SLA window.
 
 ## 5. Contracts
 
-There is no implementation of these types yet, in any language. When one lands (`services/ledger`
-first — see §6), it is built to this diagram: a **narrower** projection is allowed where a context
-genuinely doesn't need a field; **adding a field the diagram doesn't have is not**, and the fix for
-a missing field is to change this document first.
+There is no implementation of these types yet, in any language. When one lands (see §6), it is built
+to this diagram: a **narrower** projection is allowed where a context genuinely doesn't need a field;
+**adding a field the diagram doesn't have is not**, and the fix for a missing field is to change this
+document first.
 
 ```
 CurrencyCode  = ZAR | KES | NGN | GHS | USD          (ISO 4217, extend deliberately)
@@ -196,11 +196,17 @@ taxonomy — a free-text purpose is not reportable, and "Other" is deliberately 
 
 ## 6. Structure
 
+The service topology is the one in [../project-structure.md](../project-structure.md) and
+[asco-orchestrator.md](asco-orchestrator.md) §6 — `gateway · asco · inference · messaging · rails ·
+audit`. Earlier revisions of this table named `services/ledger`, `services/compliance` and
+`services/liquidity`; those services do not exist in any other document and were never built. The
+rows below are the reconciled placements.
+
 | Path | New? | Responsibility |
 | --- | --- | --- |
-| `services/ledger/domain/` | planned | Canonical Python implementation of these entities |
-| `services/compliance/domain/verdict.py` | planned | `ComplianceVerdict` + the deterministic validators |
-| `services/liquidity/domain/proposal.py` | planned | `LiquidityProposal`, rail cost model |
+| **unresolved — see §9** | planned | Canonical Python implementation of the §3 entities (`Transfer`, `Money`, `Party`, `FxQuote`). Shared by `gateway`, `asco` and `messaging`, so it belongs to none of them |
+| `services/asco/guardrails/exit.py` | planned | `ComplianceVerdict` + the deterministic validators that check it (citation check — asco-orchestrator §6) |
+| `services/asco/agents/strategist.py` | planned | `LiquidityProposal`, rail cost model (asco-orchestrator §6) |
 | `apps/web/*.html` | exists | Static pages; carry no domain logic and no arithmetic |
 
 ## 7. Decisions & alternatives
@@ -230,3 +236,10 @@ replay (defaults §2).
       corporate? Affects whether `Party.bic` is nullable.
 - [ ] `FxQuote.expiresAt` — what is the guaranteed-rate hold window? The mockup says "Guaranteed"
       but names no duration, and guessing one is a fabricated commercial term.
+- [ ] **Where do the §3 entities live?** `Transfer`, `Money`, `Party` and `FxQuote` are shared by
+      `gateway` (parses pain.001 into them), `asco` (negotiates over them) and `messaging` (emits
+      pacs.008 from them), so they belong to no single service — but the topology in
+      [../project-structure.md](../project-structure.md) has no shared-library slot, and inventing
+      one here would be structure no merged document has. Two candidates: a workspace library
+      (`libs/domain/`, imported by each service) or duplication with a contract test enforcing §3.
+      **Blocks T017.** Resolve before the first entity is written in Python.
