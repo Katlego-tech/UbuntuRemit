@@ -17,8 +17,15 @@
 name: CI
 
 on:
+  # The kit runs this on every branch push (`branches-ignore: []`) as well as on
+  # PRs. That double-runs the whole gate for every push to a branch with an open
+  # PR -- the push event and the pull_request event are separate triggers, and no
+  # concurrency group can merge them, because the push event cannot know the PR
+  # number to key on. So: PRs are gated (that is the authority, before merge),
+  # and main is gated (the backstop after merge). A branch with no PR open is
+  # still gated locally by the pre-push hook running the same scripts/gate.sh.
   push:
-    branches-ignore: []
+    branches: [main]
   pull_request:
     branches: [main]
 
@@ -26,12 +33,7 @@ permissions:
   contents: read
 
 concurrency:
-  # Keyed on the PR number when there is one, so the `push` run and the
-  # `pull_request` run for the same commits share a group and one cancels the
-  # other. Keying on github.ref alone (the kit's default) does not dedupe them --
-  # push sees refs/heads/<branch> and the PR sees refs/pull/N/merge, so every
-  # push to a branch with an open PR runs the whole gate twice.
-  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
