@@ -40,6 +40,15 @@ MI300X · ROCm 7.0 · vLLM), so no transaction data reaches a third-party API.
 | **using Gemini / Antigravity** | [GEMINI.md](GEMINI.md) |
 | **looking for the WHAT / HOW / backlog** | [SPEC.md](SPEC.md) · [PLAN.md](PLAN.md) · [TASKS.md](TASKS.md) |
 
+## Set up your clone
+
+```bash
+bash install-hooks.sh    # once per clone, by everyone — core.hooksPath is never cloned
+uv sync --frozen         # Python 3.13.14 + the locked toolchain into .venv/
+bash scripts/gate.sh     # every check the hook and CI run, in one script
+docker compose up -d     # Kafka + Postgres, for integration tests
+```
+
 ## Run the web client
 
 Static HTML — no build step, no framework, no dependencies.
@@ -64,8 +73,11 @@ T025 wires them to real endpoints.
 ## How work happens here
 
 This repo runs the [Cultivation](https://github.com/Katlego-tech) process: three shared-state files
-(`AGENTS.md`, `STATUS.md`, `TASKS.md`), lane-based coordination, branch-only `main` with a pre-push
-gate, and per-tool AI entry points that all funnel to `AGENTS.md`.
+(`AGENTS.md`, `STATUS.md`, `TASKS.md`), lane-based coordination, branch-only `main`, and per-tool AI
+entry points that all funnel to `AGENTS.md`. Every check lives in one place — `scripts/gate.sh` —
+which the pre-push hook and CI both run, so local green and pipeline green mean the same thing. The
+gate has **no skip state**: a check that couldn't run fails the push rather than reporting green,
+because a skipped check and a passed check look identical to whoever reads the output.
 
 Two rules matter more than the rest, and both exist because work that comes back *adjacent to* what
 was asked is expensive precisely because it looks finished:

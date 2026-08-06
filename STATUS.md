@@ -79,8 +79,10 @@ lanes with the most drawn structure waiting for you — start at
 
 ## 🧱 What's built so far
 
-- **Process scaffold** from the Cultivation kit: AGENTS/SPEC/PLAN/TASKS/STATUS, `docs/`,
-  `.claude/` agents + `/feature-dev`, `.githooks/pre-push` with `core.hooksPath` set.
+- **Process scaffold** from the Cultivation kit, realigned to the 2026-08-06 kit revision (T018):
+  AGENTS/SPEC/PLAN/TASKS/STATUS, `docs/` (now incl. `code-analysis`, `iteration-rituals`,
+  `security-basics`), `.claude/` agents + `/feature-dev`, and the rebuilt gate —
+  `scripts/gate.sh` run by both `.githooks/pre-push` and CI, installed with `bash install-hooks.sh`.
 - **Four design docs** in `docs/design/` — domain model (class diagram + state machine), ASCO
   orchestrator (sequence + component + agent JSON contracts), ISO 20022 mapping, frontend.
 - **`apps/web`** — six pages of static HTML, no build step.
@@ -100,6 +102,8 @@ lanes with the most drawn structure waiting for you — start at
 
 - Web client: `python3 -m http.server 5173 --directory apps/web`. No install, no build, no
   dependencies. Its test is visual — each page beside its PNG in `legacy/stitch-mockups/`.
+- Gate: `bash install-hooks.sh` once per clone, then `bash scripts/gate.sh` any time. It prints how
+  many checks it ran — **zero checks is a failure, not a pass.**
 - Python toolchain: `uv sync --frozen` (Python 3.13.14, ruff 0.16.1, pytest 9.1.1 — all locked).
 - Kafka + Postgres: `docker compose up -d`. Kafka on `localhost:29092`, Postgres on
   **`localhost:55432`** (not 5432 — FrameFlow's db holds the default on this machine).
@@ -151,6 +155,18 @@ lanes with the most drawn structure waiting for you — start at
 
 ## 🗒️ Log
 
+- 2026-08-06 — Kirito (via Claude) — **Realigned to the new Cultivation kit (T018).** The kit was
+  rebuilt the same day around one idea: *a check that did not run is a failed check.* Every check now
+  lives in `scripts/gate.sh`, which both the pre-push hook and CI run, so the two cannot drift; the
+  hook is reduced to branch policy plus working out the change set. Adopted wholesale, plus the
+  three new process docs (`code-analysis`, `iteration-rituals`, `security-basics`) and refreshed
+  `testing-strategy` / `architecture-defaults` / `git-workflow`. Two deliberate local deviations:
+  the `apps/web` link check was folded **into** `gate.sh` rather than left in the hook (the kit has
+  no equivalent, and T009 would otherwise have been lost), and CI keeps this repo's exact,
+  verified action pins instead of the kit's floating `@v4`/`@v5` majors, with the Node steps
+  dropped because nothing here uses Node. New in the gate for free: a **secret sweep**. Verified by
+  exit code on four paths — clean tree → 0, broken `href` → 1, `NotImplementedError` → 1,
+  AWS-shaped key → 1.
 - 2026-08-06 — Kirito (via Claude) — **Code skeleton (T014, T015; T008 written but unproven).**
   uv workspace pinning
   Python 3.13.14 + ruff 0.16.1 + pytest 9.1.1; `docker-compose.yml` with Kafka 4.3.1 (KRaft) and

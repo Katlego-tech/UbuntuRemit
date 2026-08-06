@@ -53,7 +53,11 @@ The plan lives in [PLAN.md](PLAN.md); the WHAT in [SPEC.md](SPEC.md); the task l
 
 ## What you must NOT do
 
-- **Never push to `main`.** Branch, PR, let the gate pass. (Pre-push hook enforces this.)
+- **Never push to `main`.** Branch, PR, let the gate pass. (Pre-push hook enforces this — enable it
+  in your clone with `bash install-hooks.sh`; `core.hooksPath` is never cloned.)
+- **Never report the gate as green when it skipped.** `scripts/gate.sh` prints how many checks it
+  ran; zero checks across a repo that has code is a failure, not a pass. Add checks to `gate.sh`
+  only — never to CI or the hook alone, or they drift.
 - **Never report a placeholder as done** — no `TODO`, stub body, empty component, or hard-coded
   stand-in data. Can't build the real thing? The task is **blocked**; say so in STATUS.md and name
   what unblocks it. (AGENTS.md §2a.)

@@ -78,6 +78,57 @@ is a throwaway experiment where reproducibility doesn't matter. Record the versi
 in PLAN.md's Technical Context (the `Language(s)` / `Runtime` rows), and note any deliberately
 non-LTS pick there.
 
+## 6. Layers inside each service
+
+Defaults 1–5 draw boundaries *between* services and say nothing about the inside of one — which is
+where most services actually rot. The default inside a service is the **layered architecture**
+(Curriculum 202, *Separation of Concerns*): each layer depends only on the one below it, and the
+dependency arrow never points back up.
+
+```
+   Web API layer      HTTP, routes, serialization, status codes     ← knows about the domain
+   Domain layer       entities, rules, the actual behaviour         ← knows about nothing
+   Data access layer  queries, persistence, external services       ← knows about the domain
+```
+
+The test of whether you've done it: **the domain layer imports nothing from the other two.** If your
+entity class imports the ORM, or the HTTP framework, the layering is decorative.
+
+That constraint is what buys you the two things worth having:
+
+- **The domain is testable without infrastructure.** No database, no HTTP client, no broker — which
+  is what makes the unit layer in [testing-strategy.md](testing-strategy.md) fast enough to run on
+  every push.
+- **You can replace a layer.** Swap Flask for FastAPI, or Postgres for a document store, and the
+  domain doesn't know it happened.
+
+### Don't let the data model eat the domain
+
+The failure mode the Curriculum names is the **anemic object model**: classes that are nothing but
+fields with getters and setters, while all the actual behaviour lives in "service" or "manager"
+classes operating on them from outside. It looks organized and it is a procedural program wearing
+objects.
+
+The tell is a rule that lives outside the thing it constrains: `RobotService.move(robot, direction)`
+checking whether the robot is allowed to move, instead of `robot.move(direction)` enforcing it. Once
+the rule is outside, it can be bypassed by any caller that forgets it — so every caller has to
+remember, and eventually one won't.
+
+Structure and behaviour belong together. This is also why the class diagram in a design doc is worth
+drawing: a class diagram of an anemic model is visibly all boxes and no operations, and you can see
+the problem before it's code.
+
+### API contracts
+
+If a service exposes an HTTP API, the contract is **OpenAPI**, committed to the repo, and it is
+written before the client is built. It is the same principle as a design doc: the verbatim contract
+between two lanes goes in a file both lanes read, not in a conversation. Generate it from the code or
+hand-write it, but keep it in version control — a contract that only exists at runtime is a contract
+nobody can review in a PR.
+
+**Deviate when:** the service is internal, single-consumer, and both sides land in the same PR — then
+the design doc's contracts section is enough on its own.
+
 ## Where this shows up
 
 - [PLAN.template.md](../PLAN.template.md)'s Technical Context table has `Architecture`, `Messaging`,

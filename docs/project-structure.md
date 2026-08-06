@@ -28,16 +28,21 @@ UbuntuRemit/
 │   ├── planning-workflow.md       ✅ SPEC → PLAN → design → TASKS → STATUS
 │   ├── cross-ai-protocol.md       ✅ collision avoidance + handoffs
 │   ├── architecture-defaults.md   ✅ microservices/Kafka/Docker/latest-LTS stance
-│   ├── git-workflow.md            ✅ branch-only, commit format, the hook
-│   ├── testing-strategy.md        ✅ the gate
+│   ├── git-workflow.md            ✅ branch-only, commit format, how the gate is wired
+│   ├── testing-strategy.md        ✅ the gate, kinds of tests, acceptance tests
+│   ├── code-analysis.md           ✅ static + behavioural analysis; what makes a refactor
+│   ├── iteration-rituals.md       ✅ backlog/taskboard/standup/showcase/retro as files
+│   ├── security-basics.md         ✅ secrets, SSH keys, signed commits
 │   ├── project-structure.md       ✅ this file
 │   └── HANDOFF.template.md        ✅ unfilled until a handoff happens
 ├── pyproject.toml                 ✅ uv workspace root — pinned toolchain, ruff + pytest config
 ├── uv.lock                        ✅ every dependency pinned, committed
 ├── .python-version                ✅ 3.13.14 exactly
 ├── .claude/                       ✅ code-explorer/architect/reviewer, /feature-dev, frontend-design
-├── .githooks/pre-push             ✅ blocks direct pushes to main + runs the test gate
-├── .github/workflows/ci.yml       ✅ T008 — the same checks, server-side and unbypassable
+├── scripts/gate.sh                ✅ THE gate — every check lives here, and only here
+├── install-hooks.sh               ✅ run once per clone; wires the hook and self-tests it
+├── .githooks/pre-push             ✅ branch protection; computes the change set, runs gate.sh
+├── .github/workflows/ci.yml       ✅ T008 — runs the same gate.sh, server-side and unbypassable
 ├── apps/
 │   └── web/                       ✅ static HTML — the Stitch export, no build step
 │       ├── index.html             ✅ redirect to send-money.html; no UI of its own
@@ -101,10 +106,14 @@ See [../legacy/README.md](../legacy/README.md).
 python3 -m http.server 5173 --directory apps/web    # http://localhost:5173
 # Its test is visual: open each page beside its PNG in legacy/stitch-mockups/.
 
+# Once per clone, by everyone — core.hooksPath is local config and is never cloned.
+bash install-hooks.sh
+
 # Python toolchain. Installs Python 3.13.14 and the locked tools into .venv/.
 uv sync --frozen
-uv run ruff check .
-uv run pytest          # exits 5 ("no tests collected") until the first service lands
+
+# The gate. Everything the hook and CI run, in one script you can run yourself.
+bash scripts/gate.sh           # or --list to see what it would run, running nothing
 
 # Infrastructure: Kafka 4.3.1 (KRaft) + Postgres 18.4, for integration tests.
 docker compose up -d

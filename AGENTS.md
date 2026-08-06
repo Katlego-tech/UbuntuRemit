@@ -115,9 +115,15 @@ done, because by the letter of the task it was.
 ## 3. `main` is always green
 
 - **Branch-only.** Nobody pushes to `main`, ever. The pre-push hook rejects it.
-- Enable the hooks once per clone: `git config core.hooksPath .githooks`.
-- The [pre-push hook](.githooks/pre-push) runs the test gate locally; CI re-runs it on every PR.
-  A red `main` blocks the whole team, so it never happens.
+- Enable the hooks once per clone — every contributor, on every clone, because `core.hooksPath` is
+  local config and is never cloned: `bash install-hooks.sh`.
+- One gate, two triggers: [`scripts/gate.sh`](scripts/gate.sh) holds every check, the
+  [pre-push hook](.githooks/pre-push) runs it locally, and [CI](.github/workflows/ci.yml) runs the
+  same script on every PR. Add checks to `gate.sh` only — anything added in one place drifts.
+- **A check that did not run is a failed check.** The gate has no skip state: missing tooling,
+  uninstalled dependencies, or a package with no test script all fail the push rather than reporting
+  green. Rationale: [docs/git-workflow.md](docs/git-workflow.md#the-skip-rule).
+- A red `main` blocks the whole team, so it never happens.
 
 ## 4. Branch & commit flow
 
@@ -173,8 +179,10 @@ UbuntuRemit/
 ├── docs/                                         topic docs (incl. architecture-defaults.md)
 │   └── design/                                   per-lane design docs — the diagrams code is built to
 ├── .claude/                                      agents, /feature-dev command, frontend-design skill
-├── .githooks/pre-push                            the local test gate + main-branch protection
-├── .github/workflows/ci.yml                      the CI test gate
+├── scripts/gate.sh                               THE gate — every check lives here, and only here
+├── .githooks/pre-push                            branch protection; runs scripts/gate.sh
+├── .github/workflows/ci.yml                      runs the same scripts/gate.sh
+├── install-hooks.sh                              run once per clone, by everyone
 └── <your services/apps tree + docker-compose>    see docs/project-structure.md
 ```
 
@@ -192,7 +200,11 @@ A task is done when **all** of these hold:
       hard-coded stand-in data, or constant-returning function, except one the task explicitly
       declared *and* that has a follow-up task ID (§2a).
 - [ ] For UI: visually matches the reference named in the task, not merely "a version of" it.
-- [ ] Lint/format clean; the app still boots/imports; the golden-path example still works.
+- [ ] **`bash scripts/gate.sh` is green — and green because it ran, not because it found nothing.**
+      Check the count it prints; lint, format, and tests all actually executed.
+- [ ] The app still boots/imports; the golden-path example still works.
+- [ ] No secret in the diff (the gate sweeps, but it only catches known shapes —
+      [docs/security-basics.md](docs/security-basics.md)).
 - [ ] Runs inside any stated budgets (no new regression in latency/memory/cost).
 - [ ] STATUS.md updated (checkbox + lane status + Log line); task ID referenced in the commit.
 - [ ] PR opened into `main`, CI green, reviewed by another contributor, merged.

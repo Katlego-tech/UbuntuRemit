@@ -135,11 +135,26 @@ Each user-story phase is ordered **Design → Tests FIRST (must FAIL) → Implem
                 "required on `main`" additionally needs T016.
 - [ ] T009 [P] [SET] Link-and-markup check for `apps/web` in the gate: every `href` resolves to a
       file that exists (or is a deliberate `#` per frontend-web.md §8), and the HTML parses.
-      Files:    `.githooks/pre-push`, `.github/workflows/ci.yml`
+      Files:    `scripts/gate.sh` (`check_web_links`)
       Verify:   breaking one `href` fails the gate
       Done:     runs in both the hook and CI
-      Note:     the `href` half now runs in both. What remains is "the HTML parses" — no
-                markup validator is wired up yet.
+      Note:     the `href` half is done and lives in `scripts/gate.sh`, so the hook and CI get it
+                from one definition. What remains is "the HTML parses" — no markup validator
+                is wired up yet.
+- [x] T018 [SET] Realign the repo to the 2026-08-06 Cultivation kit revision.
+      Design:   the kit at `~/Documents/projects/personal/Cultivation`
+      Files:    `scripts/gate.sh`, `install-hooks.sh`, `.githooks/pre-push`,
+                `.github/workflows/ci.yml`, `docs/{code-analysis,iteration-rituals,
+                security-basics,testing-strategy,architecture-defaults,git-workflow,
+                planning-workflow}.md`, `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`,
+                `AI_ENTRYPOINT.template.md`, `README.md`, `docs/project-structure.md`
+      Contract: one gate, two triggers — every check in `scripts/gate.sh`, run by both the hook
+                and CI, with no skip state. Project-specific checks are added *to* `gate.sh`,
+                never to the hook or CI alone.
+      Verify:   `bash install-hooks.sh` self-tests green; `bash scripts/gate.sh` reports a
+                non-zero check count; a broken `href` and a stub both fail it
+      Done:     the repo's gate is the kit's gate plus the `apps/web` link check, and no check
+                lives anywhere else
 - [x] T014 [SET] Pin the Python toolchain as a uv workspace.
       Design:   `docs/architecture-defaults.md` §5 (verify, don't assume; pin exactly)
       Files:    `pyproject.toml`, `uv.lock`, `.python-version`, `.gitignore`
