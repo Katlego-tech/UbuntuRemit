@@ -3,42 +3,36 @@
 The current, actual layout. Keep it in sync when the shape changes — a stale structure doc is worse
 than none, because it actively misleads a session that trusted it.
 
-**Status marks:** ✅ exists and is real · 🔄 exists, partially real · ⬜ designed, not built.
+**Status marks:** ✅ exists and is real · 🔄 exists, partially real · ⬜ designed, not built ·
+⚪ **exists on the maintainer's machine but is not in the repo** — see "Untracked process files"
+below, and don't expect a fresh clone to have it.
 
 ## The tree
 
 ```
 UbuntuRemit/
 ├── README.md                      ✅ human overview + quick start
-├── AGENTS.md                      ✅ the contract (every session reads this)
-├── STATUS.md                      ✅ LIVE board — read first, update last
-├── CLAUDE.md · GEMINI.md          ✅ per-tool entry points, both funnel to AGENTS.md
-├── AI_ENTRYPOINT.template.md      ✅ spare, for a third tool joining later
-├── SPEC.md · PLAN.md · TASKS.md   ✅ the planning documents
-├── DESIGN-DOC.template.md         ✅ copied per lane to docs/design/<lane>.md
+├── AGENTS.md · STATUS.md          ⚪ untracked — the contract + the live board
+├── TASKS.md · CLAUDE.md           ⚪ untracked — the backlog + Claude's entry point
+├── GEMINI.md · .claude/           ⚪ untracked — Gemini's entry point, agents/commands/skills
+├── AI_ENTRYPOINT.template.md      ⚪ untracked — spare, for a third tool joining later
+├── SPEC.md · PLAN.md              ✅ the WHAT and the HOW
+├── DESIGN-DOC.template.md         ⚪ untracked — copied per lane to docs/design/<lane>.md
 ├── docs/
 │   ├── design/                    ✅ THE DIAGRAMS — implementation is checked against these
 │   │   ├── README.md              ✅ index + reading order
 │   │   ├── domain-model.md        ✅ class diagram, settlement state machine, invariants
 │   │   ├── asco-orchestrator.md   ✅ negotiation sequence, guardrails, agent JSON contracts
 │   │   ├── iso20022-messaging.md  ✅ pain.001/pacs.008/camt.053 mapping, validation gates
+│   │   ├── send-money-wizard.md   ✅ the three composed wizard steps
 │   │   └── frontend-web.md        ✅ component tree, tokens, visual references, deviations
 │   ├── reference/                 ✅ the three ASCO source PDFs (overview, approach, feasibility)
-│   ├── design-documentation.md    ✅ draw-before-you-build doctrine
-│   ├── planning-workflow.md       ✅ SPEC → PLAN → design → TASKS → STATUS
-│   ├── cross-ai-protocol.md       ✅ collision avoidance + handoffs
-│   ├── architecture-defaults.md   ✅ microservices/Kafka/Docker/latest-LTS stance
-│   ├── git-workflow.md            ✅ branch-only, commit format, how the gate is wired
-│   ├── testing-strategy.md        ✅ the gate, kinds of tests, acceptance tests
-│   ├── code-analysis.md           ✅ static + behavioural analysis; what makes a refactor
-│   ├── iteration-rituals.md       ✅ backlog/taskboard/standup/showcase/retro as files
-│   ├── security-basics.md         ✅ secrets, SSH keys, signed commits
 │   ├── project-structure.md       ✅ this file
-│   └── HANDOFF.template.md        ✅ unfilled until a handoff happens
+│   └── *.md                       ⚪ untracked — the nine process docs (git-workflow,
+│                                     testing-strategy, security-basics, code-analysis, …)
 ├── pyproject.toml                 ✅ uv workspace root — pinned toolchain, ruff + pytest config
 ├── uv.lock                        ✅ every dependency pinned, committed
 ├── .python-version                ✅ 3.13.14 exactly
-├── .claude/                       ✅ code-explorer/architect/reviewer, /feature-dev, frontend-design
 ├── scripts/gate.sh                ✅ THE gate — every check lives here, and only here
 ├── install-hooks.sh               ✅ run once per clone; wires the hook and self-tests it
 ├── .githooks/pre-push             ✅ branch protection; computes the change set, runs gate.sh
@@ -63,6 +57,23 @@ UbuntuRemit/
 │   └── audit/                     ⬜ Kafka asco.audit consumer → append-only store
 └── docker-compose.yml             🔄 Kafka + Postgres real and running; service entries are T063
 ```
+
+## Untracked process files
+
+The collaboration layer — `AGENTS.md`, `STATUS.md`, `TASKS.md`, the per-tool AI entry points
+(`CLAUDE.md`, `GEMINI.md`, `AI_ENTRYPOINT.template.md`), `.claude/`, `DESIGN-DOC.template.md`,
+`docs/HANDOFF.template.md` and the nine process docs — is **in `.gitignore` and not in this repo**.
+It still exists on the maintainer's machine and is still how the project is actually run; it's kept
+out because the repo is public and that layer is working process, not product.
+
+Two consequences, both real:
+
+- **A fresh clone gets none of it.** A second machine or a collaborator has to copy it across by
+  hand, or re-bootstrap from the Cultivation kit. Nothing in the build depends on it — the gate,
+  the toolchain and the tests are all tracked — but the *process* doesn't travel with the code.
+- **Untracking is not un-publishing.** Every version of those files up to `a443a5d` is still in this
+  repo's history and on the PR #1 page. Removing them going forward does not remove them from the
+  public record; that would need a history rewrite or a private repo.
 
 ## Why this shape
 

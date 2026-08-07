@@ -1,8 +1,8 @@
 # Design documents
 
 One per non-trivial lane, named after it, so `feat/<lane>` ↔ `docs/design/<lane>.md`.
-Start from [DESIGN-DOC.template.md](../../DESIGN-DOC.template.md); rules and the
-which-diagram-when table are in [../design-documentation.md](../design-documentation.md).
+Start from DESIGN-DOC.template.md; rules and the
+which-diagram-when table are in ../design-documentation.md.
 
 Diagrams are **Mermaid in fenced code blocks**, never images — they diff in a PR and every
 assistant can read and write them.
@@ -28,4 +28,4 @@ assistant can read and write them.
 **These diagrams are the specification; the prose around them is commentary.** If your
 implementation has a field the class diagram doesn't, a call the sequence diagram doesn't, or a
 state transition the machine doesn't, you are building something else. Change the diagram in its
-own PR and get it agreed, or build what's drawn. See [../../AGENTS.md](../../AGENTS.md) §2a.
+own PR and get it agreed, or build what's drawn. See ../../AGENTS.md §2a.

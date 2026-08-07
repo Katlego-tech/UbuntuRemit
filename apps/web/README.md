@@ -48,7 +48,7 @@ than re-typed. Design: [`docs/design/send-money-wizard.md`](../../docs/design/se
    block; the rationale is `legacy/stitch-mockups/ubuntu_heritage/DESIGN.md`, still binding.
 5. **Don't overclaim.** New copy may say "ISO 20022 message prepared"; it may not say "SARB
    compliant". See `docs/design/iso20022-messaging.md` §3.6.
-6. Frontend lanes are Claude's by default — [../../AGENTS.md](../../AGENTS.md) §1.
+6. Frontend lanes are Claude's by default — ../../AGENTS.md §1.
 
 ## Known issues (real, tracked, not cosmetic)
 

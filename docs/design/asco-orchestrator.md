@@ -240,7 +240,7 @@ rejects the proposal outright (Non-negotiable I).
 | Quantisation | FP8, measured before adoption | assuming FP4 is fine — the risk register allows FP8/FP4 for latency, but reasoning degradation must be measured, not assumed |
 | Audit unavailable | refuse the transfer | settle-and-log-later — an unauditable settlement violates SARB PEM traceability |
 
-Deviations from [../architecture-defaults.md](../architecture-defaults.md): none.
+Deviations from ../architecture-defaults.md: none.
 
 ## 8. How this is verified
 

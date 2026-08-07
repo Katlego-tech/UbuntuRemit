@@ -13,8 +13,8 @@ live application is checked against.
 
 ## Why it's kept
 
-The screenshots are the **visual reference** every UI task in [TASKS.md](../TASKS.md) is specified
-against, by path — per [docs/design-documentation.md](../docs/design-documentation.md) § UI is a
+The screenshots are the **visual reference** every UI task in TASKS.md is specified
+against, by path — per docs/design-documentation.md § UI is a
 special case. "Build the compliance dashboard" invites an assistant to invent a compliance
 dashboard; "build the one in `legacy/stitch-mockups/compliance_dashboard/screen.png`" does not.
 

@@ -9,3 +9,33 @@ __pycache__/
 .venv/
 .pytest_cache/
 .ruff_cache/
+
+# --- collaboration process, deliberately untracked ---------------------------
+# These files still exist on disk and are still how this project is actually run
+# (see PLAN.md "How work happens"). They are kept out of the repo because the
+# repo is public and this layer is working process, not product.
+#
+# Consequence to know: a fresh clone gets NONE of this. A second machine or a
+# collaborator has to copy it across by hand, or re-bootstrap from the
+# Cultivation kit at ~/Documents/projects/personal/Cultivation.
+#
+# Note the history still contains every version of these files up to a443a5d --
+# untracking removes them going forward, it does not un-publish them.
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+AI_ENTRYPOINT.template.md
+STATUS.md
+TASKS.md
+DESIGN-DOC.template.md
+.claude/
+docs/HANDOFF.template.md
+docs/architecture-defaults.md
+docs/code-analysis.md
+docs/cross-ai-protocol.md
+docs/design-documentation.md
+docs/git-workflow.md
+docs/iteration-rituals.md
+docs/planning-workflow.md
+docs/security-basics.md
+docs/testing-strategy.md
