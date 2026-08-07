@@ -67,7 +67,7 @@ lanes with the most drawn structure waiting for you — start at
 | Phase | What | Target window | Status |
 |-------|------|---------------|--------|
 | Phase 0 | Design docs — the diagrams everything is built to | — | ✅ |
-| Phase 1 | Setup: scaffold, pages served, hooks, CI | — | 🔄 CI outstanding |
+| Phase 1 | Setup: scaffold, pages served, hooks, CI | — | 🔄 CI green; T016 (branch protection) + T009 (markup parse) outstanding |
 | Phase 2 | Frontend — the approved export ships | — | 🔄 self-hosting (T024) + endpoints (T025) pending |
 | Phase 3 | ISO 20022 message layer (blocking) | — | ⬜ |
 | Phase 4 | ASCO negotiation + guardrails | — | ⬜ |
@@ -93,8 +93,9 @@ lanes with the most drawn structure waiting for you — start at
 - **`legacy/stitch-mockups/`** — the frozen visual reference, with a README on why it's kept.
 - **`docs/reference/`** — the three ASCO PDFs.
 - **Code skeleton** — uv workspace (`pyproject.toml`, `uv.lock`, `.python-version`),
-  `docker-compose.yml` (Kafka + Postgres, both verified healthy), `.github/workflows/ci.yml`, and a
-  pre-push hook that now actually runs. **`services/` is still empty** — see the Log entry for why.
+  `docker-compose.yml` (Kafka + Postgres, both verified healthy), and one gate in
+  `scripts/gate.sh` run by both the pre-push hook and CI — green in both, 5 checks.
+  **`services/` is still empty** — see the 2026-08-06 Log entry for why.
 
 ## 🛠️ Environment & access
 
