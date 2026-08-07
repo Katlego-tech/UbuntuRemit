@@ -3,7 +3,7 @@
 > Source of truth for "what's going on right now." Read first, update last. Treat updating it as
 > part of "done."
 
-_Last updated: 2026-08-06 — by Kirito (via Claude)_
+_Last updated: 2026-08-07 — by Kirito (via Claude)_
 
 ---
 
@@ -34,7 +34,7 @@ _Last updated: 2026-08-06 — by Kirito (via Claude)_
 | `frontend-web` | Kirito | Claude | 🔄 6 pages ship; the 3 composed wizard steps await visual sign-off (T027) |
 | `messaging` | — | — | 🟢 unclaimed and **fully unblocked** — T028–T032 all ready to start |
 | `asco` | — | — | ⬜ unclaimed, blocked on Phase 3 |
-| `infra` | Kirito | Claude | 🔄 PR #1 — toolchain + compose verified; CI written but **never executed** (GitHub Actions outage), T016 needs Kirito |
+| `infra` | Kirito | Claude | 🔄 PR #1 — toolchain, compose and CI all verified green; **T016 (branch protection) needs Kirito**, then the lane is done |
 
 **Frontend lanes are Claude's by default** (AGENTS.md §1). Gemini: `messaging` and `asco` are the
 lanes with the most drawn structure waiting for you — start at
@@ -51,12 +51,10 @@ lanes with the most drawn structure waiting for you — start at
    avatar from `googleusercontent.com`. For a product whose premise is data sovereignty, three
    third-party requests per settlement screen is a real defect, not a nitpick. Must have zero
    visual effect — verify against the PNGs.
-3. **T008 — get one CI run green.** The workflow is written and PR #1 shows all three checks, but
-   every job has died in `Set up job` on an open GitHub Actions outage (2026-08-06 15:22 UTC), so
-   it has never actually executed. Re-run when GitHub recovers. The same checks pass locally.
-4. **T016 — turn on branch protection for `main`.** Needs Kirito; it's a repo setting, not code.
-   Until the checks are *required* server-side, the gate is opt-in and one `--no-verify` away
-   from being skipped.
+3. **T016 — turn on branch protection for `main`.** Needs Kirito; it's a repo setting, not code.
+   Require the check named **`gate`** (one job, not the three the workflow had before T018).
+   Until it's *required* server-side, the gate is opt-in and one `--no-verify` away from being
+   skipped — which is the only remaining hole in "main is always green".
 4. **T028–T030 — build the schema-verification pipeline.** This is now the highest-value
    unblocked work: it needs no version numbers to build, and it is what makes the versions safe to
    adopt whenever the MyStandards export arrives. Design is complete in
@@ -154,6 +152,16 @@ lanes with the most drawn structure waiting for you — start at
   measures it before anyone commits.
 
 ## 🗒️ Log
+
+- 2026-08-07 — Kirito (via Claude) — **T008 green.** CI ran for the first time once the GitHub
+  Actions outage cleared: `== gate passed (5 check(s) run across 1 project(s)) ==` on PR #1 — the
+  same count `scripts/gate.sh` reports locally, so it passed because it ran, not because it found
+  nothing to do. ruff check, ruff format, pytest, the `apps/web` link check, the placeholder sweep
+  and the secret sweep all executed against ruff 0.16.1 + pytest 9.1.1 resolved from `uv.lock`.
+  T008's `Done` used to include "required on `main`", which is a repo setting rather than anything
+  this task can deliver; that half now lives solely in **T016**, so neither task can hide behind
+  the other. T016 must require the check named **`gate`** — one job, not the three the workflow had
+  before T018.
 
 - 2026-08-06 — Kirito (via Claude) — **Realigned to the new Cultivation kit (T018).** The kit was
   rebuilt the same day around one idea: *a check that did not run is a failed check.* Every check now

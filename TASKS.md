@@ -123,16 +123,18 @@ Each user-story phase is ordered **Design → Tests FIRST (must FAIL) → Implem
       that it is the visual reference, not code.
 - [x] T007 [SET] Serve the approved Stitch export from `apps/web/` (`send-money.html`,
       `compliance.html`, `wallet.html`, plus an `index.html` redirect). Static files, no build step.
-- [ ] T008 [SET] CI workflow re-running the pre-push gate.
+- [x] T008 [SET] CI workflow running the same gate as the pre-push hook.
       Files:    `.github/workflows/ci.yml`
       Verify:   a PR shows the check; a deliberately broken link turns it red
-      Done:     CI is required on `main` and green on the scaffold
-      Status:   **written, not yet demonstrated.** The workflow exists and PR #1 shows all three
-                checks. Every job so far has died in `Set up job` with "Failed to resolve action
-                download info: Service Unavailable" — an open GitHub Actions incident (partial
-                outage, 2026-08-06 15:22 UTC), not a fault in the workflow. The same checks pass
-                locally through `.githooks/pre-push`. **Not done until a run goes green**, and
-                "required on `main`" additionally needs T016.
+      Done:     CI runs `scripts/gate.sh` on every PR and goes green on the scaffold
+      Status:   green on PR #1 (2026-08-07 09:51 UTC) —
+                `== gate passed (5 check(s) run across 1 project(s)) ==`, the same count the hook
+                reports locally, so it passed because it ran rather than because it found nothing.
+                Three earlier attempts on 2026-08-06 never executed a step; that was a GitHub
+                Actions major outage, now resolved. The broken-link half of `Verify` was proven
+                locally against the same `scripts/gate.sh` CI invokes (exit 1).
+      Note:     **making the check *required* is T016**, not this task — it's a repo setting.
+                Splitting them so neither hides behind the other.
 - [ ] T009 [P] [SET] Link-and-markup check for `apps/web` in the gate: every `href` resolves to a
       file that exists (or is a deliberate `#` per frontend-web.md §8), and the HTML parses.
       Files:    `scripts/gate.sh` (`check_web_links`)
@@ -176,8 +178,9 @@ Each user-story phase is ordered **Design → Tests FIRST (must FAIL) → Implem
                 entries for services that don't exist.
 - [ ] T016 [SET] Turn on server-side branch protection for `main`.
       Design:   `docs/git-workflow.md` § Two layers of "no direct push to main"
-      Contract: require a PR, require the CI checks (`lint + tests`, `apps/web link check`,
-                `placeholder sweep`), require one approval, disallow bypass
+      Contract: require a PR, require the single CI check named **`gate`** (the workflow is one
+                job now — T018 collapsed the three earlier jobs into one `scripts/gate.sh` run),
+                require one approval, disallow bypass
       Verify:   pushing to `main` directly is refused by the server, not just the local hook
       Done:     `gh api repos/Katlego-tech/UbuntuRemit/branches/main/protection` returns the rules
       Note:     needs Kirito — it's a repo-settings change, not a code change.
