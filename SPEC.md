@@ -1,7 +1,7 @@
 # `UbuntuRemit` — Specification (the WHAT)
 
 **Related:** [PLAN.md](PLAN.md) (the HOW) · [docs/design/](docs/design/) (the shapes) ·
-[TASKS.md](TASKS.md) (the backlog)
+TASKS.md (the backlog)
 
 ---
 

@@ -33,12 +33,9 @@ MI300X · ROCm 7.0 · vLLM), so no transaction data reaches a third-party API.
 
 | If you're… | Read |
 | --- | --- |
-| **any contributor, human or AI** | [AGENTS.md](AGENTS.md) — the contract. §2a especially. |
-| **picking up work** | [STATUS.md](STATUS.md) — the live board. Read first, update last. |
 | **about to write code** | [docs/design/](docs/design/) — the diagrams you build to. |
-| **using Claude** | [CLAUDE.md](CLAUDE.md) |
-| **using Gemini / Antigravity** | [GEMINI.md](GEMINI.md) |
-| **looking for the WHAT / HOW / backlog** | [SPEC.md](SPEC.md) · [PLAN.md](PLAN.md) · [TASKS.md](TASKS.md) |
+| **looking for the WHAT / HOW** | [SPEC.md](SPEC.md) · [PLAN.md](PLAN.md) |
+| **wondering how the repo is laid out** | [docs/project-structure.md](docs/project-structure.md) |
 
 ## Set up your clone
 
@@ -72,34 +69,37 @@ T025 wires them to real endpoints.
 
 ## How work happens here
 
-This repo runs the [Cultivation](https://github.com/Katlego-tech) process: three shared-state files
-(`AGENTS.md`, `STATUS.md`, `TASKS.md`), lane-based coordination, branch-only `main`, and per-tool AI
-entry points that all funnel to `AGENTS.md`. Every check lives in one place — `scripts/gate.sh` —
-which the pre-push hook and CI both run, so local green and pipeline green mean the same thing. The
-gate has **no skip state**: a check that couldn't run fails the push rather than reporting green,
-because a skipped check and a passed check look identical to whoever reads the output.
+Branch-only `main`, protected server-side: no direct pushes, and the `gate` check must be green
+before a PR can merge. Every check lives in one place — [`scripts/gate.sh`](scripts/gate.sh) — which
+the pre-push hook and CI both run, so local green and pipeline green mean the same thing. The gate
+has **no skip state**: a check that couldn't run fails the push rather than reporting green, because
+a skipped check and a passed check look identical to whoever reads the output.
 
 Two rules matter more than the rest, and both exist because work that comes back *adjacent to* what
 was asked is expensive precisely because it looks finished:
 
 1. **Nothing non-trivial is built before it's drawn.** Class, sequence and state diagrams live in
    [docs/design/](docs/design/) and are what implementations are checked against — not the prose
-   around them. [docs/design-documentation.md](docs/design-documentation.md)
+   around them.
 2. **No placeholder is ever "done".** No `TODO`, stub body, empty component, or hard-coded
-   stand-in data. If the real thing can't be built yet, the task is *blocked*, and STATUS.md says
-   what unblocks it. [AGENTS.md](AGENTS.md) §2a
+   stand-in data. If the real thing can't be built yet, the task is *blocked*, and what unblocks it
+   is written down. The gate enforces this mechanically on every push.
+
+The day-to-day collaboration process (the shared board, lane claiming, the per-tool AI entry points)
+is kept out of this repo deliberately — it's working process, not product. It lives on the
+maintainer's machine, bootstrapped from the Cultivation kit.
 
 ## Layout
 
 ```
 UbuntuRemit/
-├── AGENTS.md · CLAUDE.md · GEMINI.md      shared-state entry points
-├── SPEC.md · PLAN.md · TASKS.md · STATUS.md
-├── DESIGN-DOC.template.md                 per-lane design-doc template
+├── SPEC.md · PLAN.md                      the WHAT and the HOW
+├── scripts/gate.sh                        every check, run by the hook and CI alike
+├── install-hooks.sh                       run once per clone
 ├── docs/
 │   ├── design/                            the diagrams — build to these
 │   ├── reference/                         the three ASCO source papers
-│   └── *.md                               process docs
+│   └── project-structure.md               the actual layout
 ├── apps/web/                              static HTML client — the Stitch export, as-is
 ├── legacy/stitch-mockups/                 frozen visual reference — do not edit
 └── services/                              gateway · asco · messaging · audit (planned)

@@ -3,7 +3,7 @@
 **Status:** agreed · **Owner:** Kirito (Claude) · **Tasks:** T010–T025 ·
 **Spec:** [SPEC.md](../../SPEC.md) US1, US5
 
-> ⚠ **Frontend lanes are Claude's by default** ([AGENTS.md](../../AGENTS.md) §1). Other assistants
+> ⚠ **Frontend lanes are Claude's by default** (AGENTS.md §1). Other assistants
 > may wire the pages to endpoints; they do not restructure, restyle, or port them to a framework.
 
 ---
@@ -132,7 +132,7 @@ The endpoints are listed in [asco-orchestrator.md](asco-orchestrator.md) §5 and
 ### The lesson from the reverted rewrite
 
 Recorded here because the process is supposed to absorb this kind of failure rather than repeat it
-([planning-workflow.md](../planning-workflow.md) § Planning for a specific assistant):
+(planning-workflow.md § Planning for a specific assistant):
 
 - **A port is a fidelity task, not a translation task.** The acceptance criterion is "indistinguishable
   from the PNG", and no amount of correct structure substitutes for that.

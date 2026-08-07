@@ -4,7 +4,7 @@
 **Spec:** [SPEC.md](../../SPEC.md) US1–US4
 
 > The nouns of UbuntuRemit. Every service and the web client build to the classes below.
-> Rules: [../design-documentation.md](../design-documentation.md).
+> Rules: ../design-documentation.md.
 
 ---
 
@@ -218,7 +218,7 @@ rows below are the reconciled placements.
 | Retry on failure | bounded, max 2 alternate rails | unbounded retry — it can silently blow an RTGS SLA window |
 | Rejected → retry | new `Transfer` id | reopening the rejected one — destroys the audit record of the rejection |
 
-Deviations from [../architecture-defaults.md](../architecture-defaults.md): none. One service per
+Deviations from ../architecture-defaults.md: none. One service per
 bounded context; Kafka chosen over RabbitMQ specifically because the audit log needs retention and
 replay (defaults §2).
 

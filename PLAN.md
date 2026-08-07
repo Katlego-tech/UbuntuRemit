@@ -1,7 +1,7 @@
 # `UbuntuRemit` — Implementation Plan (the HOW)
 
 **Companions:** [SPEC.md](SPEC.md) (the WHAT) · [docs/design/](docs/design/) (the shapes) ·
-[TASKS.md](TASKS.md) (the task list)
+TASKS.md (the task list)
 
 ---
 
@@ -25,7 +25,7 @@ windows), and they are what make an unbounded agent loop unacceptable.
 These are the values every change is held to. If you're also running Spec-Kit or a similar tool,
 this list is the "constitution" in plain language — keep both in sync, or drop the formal
 constitution and let this section be the single copy (see
-[docs/planning-workflow.md](docs/planning-workflow.md)).
+docs/planning-workflow.md).
 
 1. **Never fabricate a regulatory fact, a rate, or a compliance verdict.** Every AML/KYC/SARB
    decision, FX rate, settlement confirmation and ISO 20022 field traces to a real source document,
@@ -47,11 +47,15 @@ constitution and let this section be the single copy (see
 6. **Design before code, and no placeholders.** Non-trivial lanes have a merged design doc in
    [docs/design/](docs/design/) with the diagrams implementation is checked against; nothing ships
    with a `TODO`, a stub body, or hard-coded stand-in data. Can't build the real thing → the task is
-   blocked, not done. (AGENTS.md §2a · [docs/design-documentation.md](docs/design-documentation.md).)
+   blocked, not done. (AGENTS.md §2a · docs/design-documentation.md.)
 7. **Phased delivery.** Independent user stories; each phase ends demoable.
 8. **Coordinate through shared state.** STATUS.md, AGENTS.md and TASKS.md are the only coordination
-   surfaces; one writer per task.
-9. **Branch-only, always-green `main`.** No direct pushes; every change lands via PR with a green gate.
+   surfaces; one writer per task. **These files are deliberately untracked** — they live on the
+   maintainer's machine, not in this public repo. See docs/project-structure.md § Untracked process
+   files. Nothing in the build depends on them.
+9. **Branch-only, always-green `main`.** No direct pushes; every change lands via PR with a green
+   gate. Enforced server-side since 2026-08-07: `main` is protected, the `gate` check is required,
+   and admins are not exempt.
 
 ---
 
@@ -85,13 +89,12 @@ Full write-up: [docs/project-structure.md](docs/project-structure.md).
 
 ```
 UbuntuRemit/
-├── AGENTS.md · CLAUDE.md · GEMINI.md         shared-state entry points
-├── SPEC.md · PLAN.md · TASKS.md · STATUS.md  the planning documents
-├── DESIGN-DOC.template.md                    per-lane design-doc template
+├── SPEC.md · PLAN.md                         the WHAT and the HOW
 ├── docs/
 │   ├── design/                               THE DIAGRAMS — build to these
 │   ├── reference/                            the three ASCO source PDFs
-│   └── *.md                                  process docs from the Cultivation kit
+│   └── project-structure.md                  the actual layout
+├── scripts/gate.sh · install-hooks.sh        the one gate, and its installer
 ├── apps/web/                                 static HTML client — the Stitch export, served as-is
 ├── legacy/stitch-mockups/                    frozen visual reference (do not edit)
 ├── pyproject.toml · uv.lock                  uv workspace root — pinned toolchain, lint + test config
@@ -107,7 +110,7 @@ UbuntuRemit/
 
 The diagrams implementation is built and reviewed against. One per non-trivial lane, merged before
 that lane's implementation tasks are written — see
-[docs/design-documentation.md](docs/design-documentation.md).
+docs/design-documentation.md.
 
 | Lane | Design doc | Covers |
 | --- | --- | --- |
@@ -120,7 +123,7 @@ that lane's implementation tasks are written — see
 
 ## Build phases (MVP-first)
 
-Mirrors [TASKS.md](TASKS.md). Each phase is independently demoable at its checkpoint.
+Mirrors TASKS.md. Each phase is independently demoable at its checkpoint.
 
 0. **Design** — domain model + one design doc per lane. ✅ done.
 1. **Setup** — repo scaffold, web app, CI, hooks. 🔄 in progress.
@@ -146,4 +149,4 @@ Mirrors [TASKS.md](TASKS.md). Each phase is independently demoable at its checkp
   the guardrail-bypass suite (a crafted uncited verdict or fabricated rail must be *rejected*, not
   passed through).
 
-See [docs/testing-strategy.md](docs/testing-strategy.md).
+See docs/testing-strategy.md.
