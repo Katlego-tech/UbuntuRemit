@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>UbuntuRemit - Send Money - Review</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-primary-fixed-variant": "#24501e",
+              "on-secondary": "#ffffff",
+              "outline-variant": "#c2c9bb",
+              "surface-container": "#edeeed",
+              "primary": "#164212",
+              "surface-dim": "#d9dad9",
+              "outline": "#72796d",
+              "on-primary": "#ffffff",
+              "on-primary-fixed": "#002201",
+              "tertiary": "#2b3b49",
+              "on-secondary-fixed": "#241a00",
+              "secondary-fixed": "#ffe088",
+              "on-surface": "#191c1c",
+              "on-tertiary-fixed-variant": "#394857",
+              "on-secondary-fixed-variant": "#574500",
+              "surface-variant": "#e1e3e2",
+              "on-surface-variant": "#42493e",
+              "on-secondary-container": "#745c00",
+              "secondary-fixed-dim": "#e9c349",
+              "secondary": "#735c00",
+              "on-error-container": "#93000a",
+              "surface-container-lowest": "#ffffff",
+              "error-container": "#ffdad6",
+              "tertiary-container": "#425261",
+              "on-primary-container": "#9ed090",
+              "primary-container": "#2e5a27",
+              "surface-container-low": "#f3f4f3",
+              "tertiary-fixed": "#d4e4f6",
+              "surface-container-highest": "#e1e3e2",
+              "surface-container-high": "#e7e8e7",
+              "on-error": "#ffffff",
+              "inverse-primary": "#a1d493",
+              "surface-bright": "#f9f9f8",
+              "background": "#f9f9f8",
+              "surface": "#f9f9f8",
+              "inverse-surface": "#2e3131",
+              "on-tertiary": "#ffffff",
+              "error": "#ba1a1a",
+              "tertiary-fixed-dim": "#b8c8da",
+              "secondary-container": "#fed65b",
+              "inverse-on-surface": "#f0f1f0",
+              "primary-fixed-dim": "#a1d493",
+              "primary-fixed": "#bdf0ad",
+              "on-background": "#191c1c",
+              "surface-tint": "#3c6934",
+              "on-tertiary-fixed": "#0d1d2a",
+              "on-tertiary-container": "#b4c5d6"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+      .glass-nav {
+        background: rgba(249, 249, 248, 0.7);
+        backdrop-filter: blur(20px);
+      }
+    </style>
+</head>
+<body class="bg-background font-body text-on-surface antialiased">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-[#f9f9f8]/70 backdrop-blur-md shadow-sm shadow-[#191c1c]/5 flex justify-between items-center px-6 py-3 w-full">
+<div class="flex items-center gap-8">
+<span class="text-xl font-black text-[#164212] tracking-tight font-headline">UbuntuRemit</span>
+<nav class="hidden md:flex gap-6">
+<a class="text-slate-500 hover:bg-slate-100 transition-colors px-3 py-1 rounded-lg text-sm font-semibold" href="#">Dashboard</a>
+<a class="text-[#164212] font-bold px-3 py-1 rounded-lg text-sm" href="send-money.html">Send Money</a>
+<a class="text-slate-500 hover:bg-slate-100 transition-colors px-3 py-1 rounded-lg text-sm font-semibold" href="compliance.html">Compliance</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-slate-500 hover:bg-slate-100 transition-colors rounded-full">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<div class="h-8 w-8 rounded-full bg-surface-container-highest overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Close-up portrait of a professional African businessman in a light-colored suit smiling against a soft blurred office background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBNjtaSrM2djvYkccghVlLFbt-grqSSuMhgX6iE_8Do-mKpntZdTIUYvt8R5BsNadfPl2tYndkQh__A1aF22ro7Q_Eoh6wLy9fAl5p484EeFleb8C-p_MEz44evbKoP16NeKRyehkOOc5rUAKdg4vk5u8bWLUjmhf9qQCEGu3Ug1925FJVZcdvxlC-BcuNCGtz4WqTsv01DcszJJfnyzjhj6pDYi5brGdhyuxm2GFXXCJpQPu-YEM_Mdx7w9Wdrlp0t5U-YvHvLR5g"/>
+</div>
+</div>
+</header>
+<main class="pt-24 pb-12 px-4 md:px-8 max-w-6xl mx-auto">
+<!-- Progress Ribbon -->
+<div class="mb-12 flex justify-between items-center max-w-3xl mx-auto relative">
+<div class="absolute top-1/2 left-0 w-full h-0.5 bg-surface-dim -translate-y-1/2 -z-10"></div>
+<div class="flex flex-col items-center gap-2 group">
+<div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center shadow-lg ring-4 ring-background">
+<span class="material-symbols-outlined text-sm" data-icon="check" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+<span class="text-xs font-bold text-primary font-headline">Amount</span>
+</div>
+<div class="flex flex-col items-center gap-2 group">
+<div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center shadow-lg ring-4 ring-background">
+<span class="material-symbols-outlined text-sm" data-icon="check" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+<span class="text-xs font-bold text-primary font-headline">Recipient</span>
+</div>
+<div class="flex flex-col items-center gap-2 group">
+<div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center shadow-lg ring-4 ring-background">
+<span class="material-symbols-outlined text-sm" data-icon="check" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+<span class="text-xs font-bold text-primary font-headline">Compliance</span>
+</div>
+<div class="flex flex-col items-center gap-2 group">
+<div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center shadow-lg ring-4 ring-background">
+<span class="font-bold text-sm">4</span>
+</div>
+<span class="text-xs font-bold text-primary font-headline">Review</span>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+<!-- Left Column: Review -->
+<div class="lg:col-span-7 space-y-6">
+<div class="bg-surface-container-lowest p-8 rounded-[1.5rem] shadow-sm">
+<h1 class="text-2xl font-black text-primary font-headline mb-6 tracking-tight">Review &amp; Confirm</h1>
+<div class="space-y-6">
+<div class="p-6 bg-surface-container-low rounded-xl">
+<h3 class="font-black text-primary font-headline uppercase tracking-wider text-xs mb-4">Recipient</h3>
+<div class="space-y-3">
+<div class="flex justify-between items-center gap-4 text-sm">
+<span class="text-on-surface-variant">Full Name</span>
+<span class="font-bold text-on-surface text-right">Kofi Mensah</span>
+</div>
+<div class="flex justify-between items-center gap-4 text-sm">
+<span class="text-on-surface-variant">Account Number</span>
+<span class="font-bold text-on-surface text-right">00129384812</span>
+</div>
+<div class="flex justify-between items-center gap-4 text-sm">
+<span class="text-on-surface-variant">Destination</span>
+<span class="font-bold text-on-surface text-right">Kenya (KES)</span>
+</div>
+</div>
+</div>
+<div class="p-6 bg-surface-container-low rounded-xl">
+<h3 class="font-black text-primary font-headline uppercase tracking-wider text-xs mb-4">Amount</h3>
+<div class="space-y-3">
+<div class="flex justify-between items-center gap-4 text-sm">
+<span class="text-on-surface-variant">Amount to Send</span>
+<span class="font-bold text-on-surface text-right">15,000.00 ZAR</span>
+</div>
+<div class="flex justify-between items-center gap-4 text-sm">
+<span class="text-on-surface-variant">Ubuntu Transfer Fee</span>
+<span class="font-bold text-primary text-right">0.00 ZAR</span>
+</div>
+<div class="flex justify-between items-center gap-4 text-sm">
+<span class="text-on-surface-variant">Exchange Rate</span>
+<span class="font-bold text-on-surface text-right">1 ZAR = 7.42 KES</span>
+</div>
+<div class="h-px bg-surface-variant my-2"></div>
+<div class="flex justify-between items-center">
+<span class="text-sm font-bold text-on-surface">Recipient Gets</span>
+<span class="text-xl font-black text-secondary font-headline">111,300.00 KES</span>
+</div>
+</div>
+</div>
+<div class="p-6 bg-surface-container-low rounded-xl">
+<h3 class="font-black text-primary font-headline uppercase tracking-wider text-xs mb-4">Declarations</h3>
+<div class="space-y-3">
+<div class="flex justify-between items-center gap-4 text-sm">
+<span class="text-on-surface-variant">Purpose of Payment</span>
+<span class="font-bold text-on-surface text-right">Family Support / Living Expenses</span>
+</div>
+<div class="flex justify-between items-center gap-4 text-sm">
+<span class="text-on-surface-variant">Source of Funds</span>
+<span class="font-bold text-on-surface text-right">Employment Salary</span>
+</div>
+</div>
+</div>
+<div class="mt-8 p-6 bg-surface-container-low rounded-xl border-l-4 border-secondary">
+<div class="flex items-center gap-3 mb-4">
+<span class="material-symbols-outlined text-secondary" data-icon="verified" style="font-variation-settings: 'FILL' 1;">verified</span>
+<h3 class="font-black text-primary font-headline uppercase tracking-wider text-xs">Settlement &amp; Messaging</h3>
+</div>
+<div class="space-y-3">
+<div class="flex justify-between items-center gap-4 text-sm">
+<span class="text-on-surface-variant">Selected Rail</span>
+<span class="font-bold text-on-surface text-right">Ripple &mdash; est. 3.2s</span>
+</div>
+<div class="flex justify-between items-center gap-4 text-sm">
+<span class="text-on-surface-variant">Compliance Verdict</span>
+<span class="font-bold text-on-surface text-right">Pass &mdash; 3 rules cited</span>
+</div>
+<div class="flex justify-between items-center gap-4 text-sm">
+<span class="text-on-surface-variant">ISO 20022 Message</span>
+<span class="font-bold text-on-surface text-right">pain.001 prepared</span>
+</div>
+<div class="flex justify-between items-center gap-4 text-sm">
+<span class="text-on-surface-variant">End-to-End ID</span>
+<span class="font-bold text-on-surface text-right">UB-99420-X</span>
+</div>
+</div>
+<p class="text-[10px] text-on-surface-variant leading-relaxed mt-4">Messages are built and validated against the ISO 20022 base catalogue. This transfer has not been validated against SARB Usage Guidelines.</p>
+</div>
+</div>
+<div class="mt-10 flex justify-between items-center">
+<a class="px-6 py-3 text-primary font-bold hover:bg-surface-container transition-colors rounded-xl" href="send-compliance.html">Back</a>
+<a class="px-10 py-4 bg-gradient-to-br from-primary to-primary-container text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all active:scale-95" href="wallet.html">Confirm &amp; Send</a>
+</div>
+</div>
+</div>
+<!-- Right Column: Live Rates & Settlement Context -->
+<div class="lg:col-span-5 space-y-6">
+<!-- Live FX Rates Card -->
+<div class="bg-surface-container-high p-6 rounded-[1.5rem] relative overflow-hidden">
+<div class="absolute top-0 right-0 w-32 h-32 bg-secondary/10 rounded-full -mr-16 -mt-16 blur-3xl"></div>
+<div class="flex justify-between items-start mb-6">
+<div>
+<h2 class="text-lg font-black text-primary font-headline tracking-tight">Exchange Rate</h2>
+<p class="text-xs text-on-surface-variant font-medium">Updated 4s ago • Live Interbank</p>
+</div>
+<span class="bg-secondary-container text-on-secondary-container px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">Guaranteed</span>
+</div>
+<div class="flex items-center justify-between mb-8">
+<div class="text-center">
+<div class="text-2xl font-black text-primary font-headline">1.00 <span class="text-sm font-bold opacity-60">ZAR</span></div>
+</div>
+<div class="flex-1 px-4 flex flex-col items-center">
+<div class="w-full h-px bg-outline-variant relative">
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-surface-container-high p-1">
+<span class="material-symbols-outlined text-primary text-sm" data-icon="trending_up">trending_up</span>
+</div>
+</div>
+</div>
+<div class="text-center">
+<div class="text-2xl font-black text-primary font-headline">7.42 <span class="text-sm font-bold opacity-60">KES</span></div>
+</div>
+</div>
+<div class="space-y-3 bg-surface-container-lowest p-4 rounded-xl">
+<div class="flex justify-between text-sm">
+<span class="text-on-surface-variant">Amount to Send</span>
+<span class="font-bold text-on-surface">15,000.00 ZAR</span>
+</div>
+<div class="flex justify-between text-sm">
+<span class="text-on-surface-variant">Ubuntu Transfer Fee</span>
+<span class="font-bold text-primary">0.00 ZAR</span>
+</div>
+<div class="h-px bg-surface-variant my-2"></div>
+<div class="flex justify-between items-center">
+<span class="text-sm font-bold text-on-surface">Recipient Gets</span>
+<span class="text-xl font-black text-secondary font-headline">111,300.00 KES</span>
+</div>
+</div>
+</div>
+<!-- Ripple Real-Time Status -->
+<div class="bg-surface-container-lowest p-6 rounded-[1.5rem] border border-outline-variant/15 shadow-sm">
+<div class="flex items-center gap-3 mb-6">
+<div class="w-8 h-8 rounded-lg bg-tertiary flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-lg" data-icon="hub">hub</span>
+</div>
+<div>
+<h3 class="text-sm font-black text-primary font-headline uppercase tracking-widest">Ripple Payments</h3>
+<p class="text-[10px] text-on-surface-variant font-bold">Institutional Settlement Engine</p>
+</div>
+</div>
+<div class="space-y-4">
+<div class="flex items-center gap-4">
+<div class="relative">
+<div class="w-3 h-3 rounded-full bg-primary-fixed-dim"></div>
+<div class="absolute inset-0 w-3 h-3 rounded-full bg-primary-fixed-dim animate-ping opacity-75"></div>
+</div>
+<div>
+<p class="text-xs font-bold text-on-surface">Liquidity Pipeline Active</p>
+<p class="text-[10px] text-on-surface-variant">ZAR/KES Corridor Verified</p>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="w-3 h-3 rounded-full bg-primary-fixed-dim"></div>
+<div>
+<p class="text-xs font-bold text-on-surface">Estimated Settlement</p>
+<p class="text-[10px] text-on-surface-variant">Real-time (Expected &lt; 3 seconds)</p>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="w-3 h-3 rounded-full bg-secondary-fixed-dim"></div>
+<div>
+<p class="text-xs font-bold text-on-surface">ISO 20022 Compliance</p>
+<p class="text-[10px] text-on-surface-variant">Messaging standards active for this transaction</p>
+</div>
+</div>
+</div>
+<div class="mt-6 pt-4 border-t border-surface-variant flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-sm" data-icon="verified" style="font-variation-settings: 'FILL' 1;">verified</span>
+<span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-tighter">Instant-Trust Protocol Enabled</span>
+</div>
+</div>
+<!-- Helpful Tip Card -->
+<div class="bg-primary/5 p-6 rounded-[1.5rem] border border-primary/10 flex gap-4">
+<span class="material-symbols-outlined text-primary" data-icon="lightbulb">lightbulb</span>
+<div>
+<h4 class="text-sm font-bold text-primary mb-1">Did you know?</h4>
+<p class="text-xs text-on-primary-fixed-variant leading-relaxed">UbuntuRemit uses decentralized liquidity to bypass traditional 3-day bank delays. Your funds move at the speed of the internet.</p>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- SideNavBar (Hidden on Mobile, simplified for this flow) -->
+<aside class="hidden lg:flex flex-col h-full py-6 space-y-4 h-screen w-20 fixed left-0 top-0 bg-[#f9f9f8] border-r-0 z-40 pt-20">
+<div class="flex flex-col items-center gap-6">
+<a class="p-3 text-slate-600 hover:bg-slate-200/50 rounded-xl transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+</a>
+<a class="p-3 bg-[#164212] text-white rounded-xl transition-all" href="send-money.html">
+<span class="material-symbols-outlined" data-icon="payments" style="font-variation-settings: 'FILL' 1;">payments</span>
+</a>
+<a class="p-3 text-slate-600 hover:bg-slate-200/50 rounded-xl transition-all" href="compliance.html">
+<span class="material-symbols-outlined" data-icon="security">security</span>
+</a>
+<a class="p-3 text-slate-600 hover:bg-slate-200/50 rounded-xl transition-all" href="wallet.html">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+</a>
+</div>
+<div class="mt-auto flex flex-col items-center gap-6 pb-4">
+<a class="p-3 text-slate-600 hover:bg-slate-200/50 rounded-xl transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</a>
+</div>
+</aside>
+</body></html>

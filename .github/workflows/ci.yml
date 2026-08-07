@@ -1,0 +1,86 @@
+# CI -- the backstop for the local pre-push gate.
+#
+# The local hook is opt-in (core.hooksPath is not cloned) and bypassable (--no-verify),
+# so it is the fast feedback loop, not the authority. This is the authority: it runs on
+# hardware nobody can configure their way around.
+#
+# It deliberately runs the SAME scripts/gate.sh the hook runs. Do not add checks here
+# that the hook doesn't have -- add them to gate.sh and both get them. A pipeline that
+# has drifted from the local gate teaches people to ignore the local gate.
+#
+# Customized for this project: the toolchain below matches PLAN.md's Technical Context.
+# Action versions are pinned to exact releases verified on 2026-08-06, not to floating
+# majors -- architecture-defaults.md section 5 asks for exact pins, and `@v4` is not one.
+# There is no Node step: this project has no Node anywhere (apps/web is static HTML with
+# no build step), so installing a runtime nothing uses would only slow the gate down.
+
+name: CI
+
+on:
+  # The kit runs this on every branch push (`branches-ignore: []`) as well as on
+  # PRs. That double-runs the whole gate for every push to a branch with an open
+  # PR -- the push event and the pull_request event are separate triggers, and no
+  # concurrency group can merge them, because the push event cannot know the PR
+  # number to key on. So: PRs are gated (that is the authority, before merge),
+  # and main is gated (the backstop after merge). A branch with no PR open is
+  # still gated locally by the pre-push hook running the same scripts/gate.sh.
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          # The placeholder and secret sweeps need the commits being introduced,
+          # not just the tip.
+          fetch-depth: 0
+
+      # --- toolchain -------------------------------------------------------
+      # .python-version pins the exact patch (3.13.14) and uv.lock pins every
+      # dependency, so setup-uv needs no version literal of its own here.
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v9.0.0
+        with:
+          python-version-file: .python-version
+          enable-cache: true
+
+      # --- dependencies ----------------------------------------------------
+      # gate.sh treats "dependencies not installed" as a failure, so this step is
+      # what makes it able to run rather than able to complain. --frozen with no
+      # fallback: if uv.lock has drifted from pyproject.toml, that is the finding.
+      - name: Install Python dependencies
+        run: uv sync --frozen
+
+      # --- the gate --------------------------------------------------------
+      - name: Compute the change set
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base="${{ github.event.pull_request.base.sha }}"
+            head="${{ github.event.pull_request.head.sha }}"
+            git diff --name-only --diff-filter=ACM "$base..$head" > /tmp/changed.txt
+          else
+            before="${{ github.event.before }}"
+            if [ -n "$before" ] && [ "$before" != "0000000000000000000000000000000000000000" ] \
+               && git cat-file -e "$before^{commit}" 2>/dev/null; then
+              git diff --name-only --diff-filter=ACM "$before..${{ github.sha }}" > /tmp/changed.txt
+            else
+              git ls-tree -r --name-only "${{ github.sha }}" > /tmp/changed.txt
+            fi
+          fi
+          echo "$(wc -l < /tmp/changed.txt) file(s) in the change set"
+
+      - name: Run the gate
+        run: bash scripts/gate.sh --changed-files /tmp/changed.txt

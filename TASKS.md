@@ -1,0 +1,451 @@
+# `UbuntuRemit` — Tasks
+
+**Plan:** [PLAN.md](PLAN.md) · **Spec:** [SPEC.md](SPEC.md) · **Designs:** [docs/design/](docs/design/)
+
+> One of the three shared-state files (with [AGENTS.md](AGENTS.md) and [STATUS.md](STATUS.md)).
+> **One writer per task** — claim it in STATUS.md before you start.
+
+---
+
+## How tasks are written here
+
+A task is a **contract**, not a reminder. The person writing it and the person (or AI) building it
+are usually not the same, and the builder will implement *exactly* what the task specifies — so a
+task that under-specifies gets you something plausible-looking and wrong: the right file with a
+`TODO` in it, a component that renders *a* screen rather than *the* screen, a function with the
+agreed name and a stubbed body.
+
+**The task is under-specified if a competent implementer who read nothing else could build
+something structurally different from what you intend.** When that's true, the fix is not a longer
+sentence — it's a design doc ([docs/design-documentation.md](docs/design-documentation.md)) and a
+reference to it.
+
+### Anatomy
+
+```
+- [ ] T0nn [P] [US1] <imperative one-line summary>
+      Design:  docs/design/<lane>.md §<section>        <- the structure to build to
+      Files:   <paths this task creates or changes>
+      Contract:<exact signature / schema / props — or the design §ref that has it>
+      Verify:  <the command or check that proves it works>
+      Done:    <the observable end state, in the user's or caller's terms>
+```
+
+| Field | Required when | Why it's there |
+| --- | --- | --- |
+| **Design** | the task creates structure (types, services, screens, flows) | gives the implementer a diagram to build to instead of a guess |
+| **Files** | always, unless genuinely unknowable | stops two lanes colliding; makes "did it touch the right thing" reviewable |
+| **Contract** | anything another lane or task consumes | lets parallel lanes compose instead of each inventing an interface |
+| **Verify** | always | a task with no check is a task nobody can close honestly |
+| **Done** | always | phrased as an outcome, so "the file exists" can't pass for "it works" |
+
+### Rules
+
+1. **No placeholder deliverables.** A task may not be closed with `TODO`, `FIXME`, `pass`,
+   `NotImplementedError`, an empty component, hard-coded fake data standing in for a real call, or
+   a function that returns a constant to make a test green. If the real thing can't be built yet,
+   the task is **blocked**, not done — say so in STATUS.md and name what unblocks it.
+   *The one exception:* a deliberately stubbed dependency that the task text names as a stub, with
+   a follow-up task ID already written for replacing it.
+2. **Every task is a vertical slice.** "Create the module skeleton" is not a task; "parse a
+   pain.001 payload into a `Transfer` and reject a malformed one" is. Scaffolding is part of the
+   first behavioural task, not a task of its own.
+3. **Sized to one sitting.** If a task can't be finished and verified in one working session,
+   split it. Long tasks are where placeholders come from — the implementer runs out of room and
+   leaves a marker.
+4. **Tests first, and the test must fail for the right reason.** A test that passes against an
+   empty implementation is not a test. Write it, watch it fail, then implement.
+5. **UI tasks name their visual reference by path.** Never "build the dashboard" — always "build
+   the dashboard in `<path>/screen.png`, matching layout, tokens and copy". See
+   [docs/design-documentation.md](docs/design-documentation.md) § UI is a special case.
+6. **One story label per task.** If a task serves two user stories, it's two tasks.
+7. **`[P]` means genuinely parallel** — disjoint files *and* no unmet dependency. If two `[P]`
+   siblings both touch the same file, one of them is mislabelled.
+
+### Good vs. bad
+
+> ❌ `- [ ] T014 [US2] Build the compliance dashboard`
+>
+> Produces: *a* dashboard. Some cards, some invented metrics, a chart library nobody chose.
+>
+> ✅
+> ```
+> - [ ] T0xx [US5] Populate the Compliance Health Dashboard from the health endpoint
+>       Design:  docs/design/frontend-web.md §4 (data flow), §2 (visual reference)
+>       Files:   apps/web/compliance.html
+>       Contract:GET /api/compliance/health -> ComplianceHealth (asco-orchestrator.md §5)
+>       Verify:  serve apps/web, open compliance.html BESIDE
+>                legacy/stitch-mockups/compliance_dashboard/screen.png — pixel-identical except
+>                the six values that now come from the endpoint
+>       Done:    all six modules read live values; no static metric remains in the markup; the
+>                page still matches the PNG
+> ```
+>
+> The ✅ version is longer, and that is the point — the ❌ version is satisfiable by anything
+> dashboard-shaped, and something dashboard-shaped is what you will get.
+
+---
+
+## Legend
+
+Format: `[ID] [P?] [Story] Description`
+
+- **[ID]** — task identifier `Tnnn`, monotonically increasing, never reused.
+- **[P]** — parallelizable: touches different files from its siblings and has no unmet dependency.
+- **[Story]** — the label the task serves (`US1`–`USn`, `SET` setup, `FND` foundational,
+  `DSN` design/documentation, `POL` polish).
+- Commit format: `feat(scope): Tnnn short description` (e.g. `feat(asco): T041 bind sentinel to the verdict schema`).
+
+Each user-story phase is ordered **Design → Tests FIRST (must FAIL) → Implementation → Checkpoint**.
+
+
+---
+
+## Phase 0 — Design ✅
+
+- [x] T001 [DSN] `docs/design/domain-model.md` — entities, invariants, settlement state machine.
+- [x] T002 [P] [DSN] `docs/design/asco-orchestrator.md` — negotiation sequence, guardrail
+      components, agent handshake JSON contracts.
+- [x] T003 [P] [DSN] `docs/design/iso20022-messaging.md` — pain.001/pacs.008/camt.053 field
+      mapping, the three validation gates.
+- [x] T004 [P] [DSN] `docs/design/frontend-web.md` — component tree, token mapping, visual
+      references by path, recorded deviations.
+
+**Checkpoint:** ✅ every Phase 2+ lane has a merged design doc; `docs/design/README.md` indexes them.
+
+---
+
+## Phase 1 — Setup
+
+- [x] T005 [SET] Bootstrap the repo from the Cultivation kit (AGENTS/STATUS/SPEC/PLAN/TASKS,
+      `docs/`, `.claude/`, `.githooks/pre-push`, `core.hooksPath`).
+- [x] T006 [SET] Freeze the Stitch export into `legacy/stitch-mockups/` with a README explaining
+      that it is the visual reference, not code.
+- [x] T007 [SET] Serve the approved Stitch export from `apps/web/` (`send-money.html`,
+      `compliance.html`, `wallet.html`, plus an `index.html` redirect). Static files, no build step.
+- [x] T008 [SET] CI workflow running the same gate as the pre-push hook.
+      Files:    `.github/workflows/ci.yml`
+      Verify:   a PR shows the check; a deliberately broken link turns it red
+      Done:     CI runs `scripts/gate.sh` on every PR and goes green on the scaffold
+      Status:   green on PR #1 (2026-08-07 09:51 UTC) —
+                `== gate passed (5 check(s) run across 1 project(s)) ==`, the same count the hook
+                reports locally, so it passed because it ran rather than because it found nothing.
+                Three earlier attempts on 2026-08-06 never executed a step; that was a GitHub
+                Actions major outage, now resolved. The broken-link half of `Verify` was proven
+                locally against the same `scripts/gate.sh` CI invokes (exit 1).
+      Note:     **making the check *required* is T016**, not this task — it's a repo setting.
+                Splitting them so neither hides behind the other.
+- [ ] T009 [P] [SET] Link-and-markup check for `apps/web` in the gate: every `href` resolves to a
+      file that exists (or is a deliberate `#` per frontend-web.md §8), and the HTML parses.
+      Files:    `scripts/gate.sh` (`check_web_links`)
+      Verify:   breaking one `href` fails the gate
+      Done:     runs in both the hook and CI
+      Note:     the `href` half is done and lives in `scripts/gate.sh`, so the hook and CI get it
+                from one definition. What remains is "the HTML parses" — no markup validator
+                is wired up yet.
+- [x] T018 [SET] Realign the repo to the 2026-08-06 Cultivation kit revision.
+      Design:   the kit at `~/Documents/projects/personal/Cultivation`
+      Files:    `scripts/gate.sh`, `install-hooks.sh`, `.githooks/pre-push`,
+                `.github/workflows/ci.yml`, `docs/{code-analysis,iteration-rituals,
+                security-basics,testing-strategy,architecture-defaults,git-workflow,
+                planning-workflow}.md`, `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`,
+                `AI_ENTRYPOINT.template.md`, `README.md`, `docs/project-structure.md`
+      Contract: one gate, two triggers — every check in `scripts/gate.sh`, run by both the hook
+                and CI, with no skip state. Project-specific checks are added *to* `gate.sh`,
+                never to the hook or CI alone.
+      Verify:   `bash install-hooks.sh` self-tests green; `bash scripts/gate.sh` reports a
+                non-zero check count; a broken `href` and a stub both fail it
+      Done:     the repo's gate is the kit's gate plus the `apps/web` link check, and no check
+                lives anywhere else
+- [x] T014 [SET] Pin the Python toolchain as a uv workspace.
+      Design:   `docs/architecture-defaults.md` §5 (verify, don't assume; pin exactly)
+      Files:    `pyproject.toml`, `uv.lock`, `.python-version`, `.gitignore`
+      Contract: Python 3.13.14 exactly; ruff + pytest pinned; ruff configured with `S` (bandit)
+                and `DTZ` (naive datetimes) selected — this is a payments system
+      Verify:   `uv sync --frozen && uv run ruff check . && uv run pytest`
+      Done:     a clean clone reproduces the identical interpreter and tool versions from the
+                lockfile, with no ambient Python involved
+- [x] T015 [SET] Local infrastructure: Kafka + Postgres via compose.
+      Design:   `docs/testing-strategy.md` (integration tests use the real broker + datastore)
+      Files:    `docker-compose.yml`
+      Contract: `apache/kafka:4.3.1` in KRaft mode with auto-topic-creation **off**, and
+                `postgres:18.4-trixie`. No retention figure is set anywhere — the SARB PEM
+                number isn't known, and guessing one violates Non-negotiable I. Host port for
+                Postgres is 55432, because sibling projects hold 5432.
+      Verify:   `docker compose up -d` then `docker compose ps` — both healthy
+      Done:     both containers report healthy from a cold start with empty volumes
+      Scope:    infrastructure only. Service containers are T063, and there are deliberately no
+                entries for services that don't exist.
+- [ ] T016 [SET] Turn on server-side branch protection for `main`.
+      Design:   `docs/git-workflow.md` § Two layers of "no direct push to main"
+      Contract: require a PR, require the single CI check named **`gate`** (the workflow is one
+                job now — T018 collapsed the three earlier jobs into one `scripts/gate.sh` run),
+                require one approval, disallow bypass
+      Verify:   pushing to `main` directly is refused by the server, not just the local hook
+      Done:     `gh api repos/Katlego-tech/UbuntuRemit/branches/main/protection` returns the rules
+      Note:     needs Kirito — it's a repo-settings change, not a code change.
+- [ ] T017 [FND] Decide where the shared domain entities live, then implement them.
+      Design:   `docs/design/domain-model.md` §3 (the class diagram) and §9 (the open question)
+      Contract: `Transfer`, `Money`, `Party`, `FxQuote` exactly as drawn — a narrower projection
+                is allowed, an extra field is not. Money is integral minor units, never a float.
+      Verify:   the §8 property test (no path yields a non-integer `minorUnits`) and the
+                exhaustive state-machine test over `TransferState × TransferState`
+      Done:     the entities exist once, imported by every service that needs them
+      Blocked:  by the §9 open question — `gateway`, `asco` and `messaging` all need these types,
+                and no merged document says where a shared library lives. Resolve that first.
+
+**Checkpoint:** the three pages serve, cross-link, and match their PNGs; CI green.
+
+---
+
+## Phase 2 — Frontend (US1, US5)
+
+> **Read [docs/design/frontend-web.md](docs/design/frontend-web.md) §8 before touching this phase.**
+> A React port of these three screens was built and reverted on 2026-07-27 for not matching the
+> mockups. The export *is* the approved design. Do not re-express it in a framework, extract shared
+> partials, or "tidy" the markup — every one of those is a chance to drift from the reference, and
+> the reference is the only acceptance criterion this phase has.
+
+- [x] T010 [US1] Send-money wizard step 2 — `apps/web/send-money.html`.
+- [x] T011 [US5] Compliance health dashboard — `apps/web/compliance.html`.
+- [x] T012 [US1] Wallet & history — `apps/web/wallet.html`.
+- [x] T013 [US1] Wire the nav between the three pages; leave links with no page behind them dead.
+
+- [ ] T024 [POL] Self-host the three external runtime dependencies.
+      Design:   docs/design/frontend-web.md §3 (the `ext` subgraph), §8
+      Files:    `apps/web/*.html`, `apps/web/assets/`
+      Contract: no page issues a request to a host other than our own
+      Verify:   load each page with devtools Network + offline after first load; **then open each
+                one beside its PNG** — this change must have zero visual effect
+      Done:     Tailwind is a built stylesheet not a CDN compiler, fonts and the avatar are local,
+                and the pages are byte-for-byte identical in appearance
+      Why:      `cdn.tailwindcss.com` compiles in the browser (not a production mechanism) and a
+                sovereign-deployment product must not phone out to render a settlement screen
+
+- [ ] T025 [US1/US5] Populate the pages from live endpoints, once Phase 3 lands.
+      Design:   docs/design/frontend-web.md §4, §6 · domain-model.md §3
+      Files:    `apps/web/*.html` (+ a small fetch script per page)
+      Contract: `GET /api/session`, `/api/fx/quote`, `/api/compliance/health`, `/api/wallet`,
+                `/api/transfers` — shapes in domain-model.md §3
+      Verify:   each page beside its PNG, values now live; loading and error states defined
+      Done:     no static figure remains that is presented as a rate, balance or verdict
+      Note:     BLOCKED until Phase 3. Until then the static mockup values stay, and they are
+                honest — nothing on these pages claims to be live.
+
+- [ ] T026 [P] [POL] Accessibility audit of the export.
+      Verify:   keyboard traversal, axe run, contrast check on the gold-on-light badges
+      Done:     findings written up in frontend-web.md §10 with a fix task each — the export has
+                no focus-visible styling, unlabelled decorative icons, and a colour-only chart
+
+- [x] T021 [US1] Design + build wizard steps 1 (Amount), 3 (Compliance) and 4 (Review).
+      Design:   `docs/design/send-money-wizard.md`
+      Files:    `apps/web/send-amount.html`, `send-compliance.html`, `send-review.html`;
+                `send-money.html` Back/Continue wired; `index.html` redirect moved to step 1
+      Done:     chrome copied byte-for-byte from step 2 by script (verified identical head and
+                tail); ribbon state correct on each page; every link resolves; no new component,
+                colour or spacing value invented; no new copy overclaims (§3.6)
+      Note:     Authorised by the project leader on 2026-07-27 ("expand the UI along the line it
+                is on now"), which is what unblocked this. Previously the rule was "stop and say
+                so" — the authorisation is the difference, not a change of mind about the rule.
+- [ ] T027 [US1] **Visually verify the three composed wizard steps.**
+      Design:   send-money-wizard.md §9
+      Verify:   serve `apps/web`, walk step 1 → 2 → 3 → 4 and back; the chrome must not shift
+                between steps, and 1/3/4 must read as the same product as 2 and `compliance.html`
+      Done:     a human has looked. Until then these are the only pages in the repo with no
+                reference image AND no visual sign-off — send-money-wizard.md §2 says so, and it
+                stays said until this task closes.
+      Why:      the session that built them could not see its own output. That is the exact
+                condition that produced the reverted React port (frontend-web.md §8); stating it
+                before delivery rather than after is the corrected behaviour, not an excuse.
+- [ ] T022 [US5] **Design + build** the Dashboard screen — no Stitch export exists for it, and its
+      nav link is still deliberately dead rather than pointing at an invented page.
+      Design:   produces `docs/design/dashboard.md`; compose from the existing vocabulary the way
+                the wizard steps were, and copy the console chrome from `compliance.html`
+      Done:     merged design doc, then the page, then the nav links across all six pages point
+                at it; visually verified like T027
+      Note:     unblocked by the same authorisation as T021 — not yet started
+
+**Checkpoint:** the three pages serve with no external hosts and no static figure presented as live.
+
+---
+
+## Phase 3 — Foundational: the message layer (US3, blocking)
+
+> **Read [docs/design/iso20022-messaging.md](docs/design/iso20022-messaging.md) §3 first.** The
+> version-suffix question is not a lookup with an answer — SARB publishes enforceable schemas
+> through SWIFT MyStandards, and until we have that export **every version number in the design is
+> a hypothesis**. `pacs.008.001.08` / `camt.053.001.08` / `pain.001.001.09` appear there marked
+> provisional for exactly this reason. Writing one into code as confirmed is a Non-negotiable I
+> violation, not a shortcut.
+>
+> **Resolved 2026-07-27:** we build against the **public ISO 20022 base catalogue** and state
+> plainly that this is not SARB conformance (§3.6). The MyStandards path needs participant standing
+> the project doesn't have. Nothing here is blocked any more — but the boundary is load-bearing,
+> and T032 exists to keep it stated everywhere a reader might assume otherwise.
+
+### 3a — Schema governance (build this before any schema is vendored)
+
+- [ ] T028 [FND] Define the schema-policy matrix structure, unpopulated.
+      Design:   iso20022-messaging.md §3.5
+      Files:    `services/messaging/schema-policy.yaml`
+      Contract: `conformance.{claim,notClaimed}` + `contexts.<base|samos|sadc_rtgs>.{source,
+                retrievedOn,messages}` — see §3.5. `source` is the load-bearing field.
+      Verify:   `pytest services/messaging/test_policy.py` — the loader rejects a malformed matrix
+      Done:     versions are keyed PER CLEARING CONTEXT (SAMOS and SADC-RTGS are separately
+                governed and may authorise different versions of the same message); provenance
+                travels in the data via `source`, so nothing downstream can mistake a
+                base-catalogue version for a regulator-authorised one; the file loads and is
+                empty of real values, which is honest
+- [ ] T029 [FND] Failing tests for the schema-verification pipeline — one per stage in §3.4.
+      Verify:   `pytest services/messaging/test_verify_schema.py` — fails because the verifier
+                doesn't exist yet, not because it errors
+      Done:     a negative case per stage: typo'd URN base (`iso:2022`), suffix not in the matrix,
+                outdated `xs:import`, correctly-named-but-permissive base schema
+- [ ] T030 [FND] Implement the six-stage schema-verification pipeline.
+      Design:   iso20022-messaging.md §3.4 (the flowchart IS the spec)
+      Files:    `services/messaging/verify_schema.py`, `.githooks/pre-commit`,
+                `.github/workflows/ci.yml`
+      Contract: `verify_schema(path) -> Ok | Violation(stage, reason)`; non-zero exit aborts commit
+      Verify:   T029's suite green; staging a deliberately typo'd XSD aborts the commit
+      Done:     runs as BOTH a pre-commit hook and a CI job; stage 4 exact-matches
+                `^urn:iso:std:iso:20022:tech:xsd:` (the missing-zero typo is a known-common,
+                silently-catastrophic failure); stage 7 recurses `xs:import`/`xs:redefine` and
+                applies the same checks to every dependency, including the BAH
+      Note:     **not blocked** — the pipeline is fully specified without knowing the versions.
+                This is deliberately the first thing built, not the last.
+- [ ] T031 [FND] Vendor schemas from the public ISO 20022 catalogue and populate the policy matrix.
+      Design:   iso20022-messaging.md §3.5, §3.6 — **read §3.6 before starting**
+      Files:    `services/messaging/schema-policy.yaml`, `services/messaging/schemas/`
+      Contract: `conformance.claim: ISO_20022_BASE`; `contexts.base.source: PUBLIC_BASE_CATALOGUE`
+                with `retrievedOn` and a `sha256` per file; `samos` / `sadc_rtgs` present and empty
+      Verify:   every vendored file passes `verify_schema.py` (T030); the conformance-claim test
+                fails the build if anything asserts SARB conformance while those two contexts are
+                empty
+      Done:     **no version number is hand-typed** — each is extracted from that XSD's own
+                `targetNamespace` at download and written into the matrix with its checksum and
+                retrieval date. This is what makes the file trustworthy.
+      Note:     NO LONGER BLOCKED. The SARB MyStandards path was closed deliberately on 2026-07-27
+                (§3.6): the export needs participant standing UbuntuRemit does not have, waiting on
+                it would block the message layer indefinitely, and adopting the reference paper's
+                illustrative versions as confirmed is the Non-negotiable I violation the original
+                blocker existed to prevent. We build on the base catalogue and say so.
+- [ ] T032 [FND] State the conformance boundary everywhere a reader could form the wrong impression.
+      Design:   iso20022-messaging.md §3.6 (the may / may-not table)
+      Files:    `SPEC.md`, `README.md`, `services/messaging/README.md`
+      Verify:   grep the repo for "SARB-compliant" / "SARB conformant" and equivalents — every hit
+                is either absent or explicitly negated
+      Done:     no document, code comment or log line implies SARB PEM conformance. The product
+                claim is auditability; implying unverifiable regulatory conformance fails that
+                claim before a single payment is processed.
+      ⚠ UI:     `apps/web/compliance.html` currently reads "fully integrated with FATF Travel Rule
+                protocols and ISO 20022 messaging standards", and `wallet.html` claims transfers
+                are "backed by Tier 1 banking protocols". Both are mockup marketing copy that
+                overclaims against §3.6 — and both are in the frozen export, which is not edited
+                casually (frontend-web.md §8). This is a genuine conflict between two rules, and
+                it is NOT resolved here: it needs a decision recorded in frontend-web.md §8 before
+                a word changes. Flagging it is the deliverable; rewriting it is not.
+                Note this copy only becomes a live claim when the pages carry real data (T025) —
+                today they are a static mockup and nothing on them purports to be a real
+                transaction. That's why this is a tracked conflict, not an emergency.
+
+### 3b — The messages
+
+- [ ] T033 [FND] Add the Business Application Header to the domain model.
+      Design:   **changes** domain-model.md §3 first — `SettlementInstruction` needs a BAH
+                alongside `payloadXml`. The BAH was missing from the original design; it surfaced
+                from the verification paper. Doc PR before code PR.
+      Files:    `docs/design/domain-model.md`, then `services/messaging/bah.py`
+      Done:     `head.001.001.xx` vs `head.003.001.xx` decided and recorded, not assumed
+- [ ] T034 [FND] Failing tests for pain.001 round-tripping.
+      Verify:   `pytest services/messaging` — fails because the builder doesn't exist
+      Done:     one test per mapped field in iso20022-messaging.md §5
+- [ ] T035 [FND] Build + parse pain.001, with the §5 mapping expressed as data, not branches.
+      Contract: `build_pain001(Transfer) -> str`, `parse_pain001(str) -> Transfer`
+      Verify:   `pytest services/messaging` green; XSD conformance against the ADMITTED schema
+      Done:     round-trip lossless for every mapped field; amounts are decimal strings derived
+                from minor units, never floats; `ChrgBr` treated as mandatory rather than relying
+                on the base schema's `[0..1]` permissiveness (§3.3)
+- [ ] T036 [P] [FND] pacs.008 builder, same shape.
+- [ ] T037 [P] [FND] camt.053 parser + reconciliation against `Transfer.reference`.
+      Done:     a one-minor-unit mismatch leaves the transfer unreconciled and raises — it does
+                NOT mark it delivered
+- [ ] T038 [FND] `SplmtryData` handling — `PlcAndNm` + `Envlp`, against the SARB envelope schema.
+      Design:   iso20022-messaging.md §5
+      Done:     `SourceOfFunds` rides in `SplmtryData`, never `Purp/Cd`; no local requirement is
+                implemented by altering a base ISO element (that breaks the ignore-safely contract
+                the standard guarantees via `processContents="skip"`)
+- [ ] T039 [FND] The runtime validation gates (XSD → field rules → business rules).
+      Design:   iso20022-messaging.md §6B
+      Verify:   one negative test per rejection reason, each asserting the *specific* rejection
+      Done:     `EndToEndId` reuse is a hard rejection; no model participates in validation
+
+**Checkpoint:** the schema pipeline rejects every negative case in T029; a pain.001 can be accepted,
+validated, and turned into a base-catalogue-conformant pacs.008; and no artifact anywhere claims
+SARB conformance.
+
+---
+
+## Phase 4 — US2: the ASCO negotiation loop
+
+- [ ] T040 [US2] Failing tests for the entry guardrail (schema, sanctions, limits).
+      Done:     tests fail because the guardrail doesn't exist — not because they error
+- [ ] T041 [US2] Entry guardrail. **No LLM is invoked** — a sanctions hit is never a matter of opinion.
+      Design:   docs/design/asco-orchestrator.md §3, §4
+- [ ] T042 [US2] Master Orchestrator as a deterministic state machine over
+      `docs/design/domain-model.md` §4.
+      Verify:   exhaustive test over `TransferState × TransferState` — every transition not in the
+                diagram raises
+      Done:     the orchestrator makes zero LLM calls of its own
+- [ ] T043 [P] [US2] Compliance Sentinel: prompt + constrained decoding bound to the
+      `ComplianceVerdict` schema.
+      Contract: asco-orchestrator.md §5, verbatim
+      Done:     an empty `citedRules` cannot be constructed; malformed output is re-asked once
+                then escalates
+- [ ] T044 [P] [US2] Liquidity Strategist, bound to the `LiquidityProposal` schema.
+      Done:     a proposal naming a rail absent from `railQuotes` is rejected and audited with
+                `deterministicOverride=true`
+- [ ] T045 [US2] Exit validator — citation check, rail re-check, ISO 20022 validation.
+      Verify:   the guardrail-bypass suite: a crafted `{"outcome":"PASS","citedRules":[]}` must be
+                rejected, not passed through
+- [ ] T046 [US2] Bound the negotiation at 3 exchanges; exhaustion escalates.
+      Done:     no "best effort" path exists in the code
+- [ ] T047 [US2] Fail-closed behaviours: inference timeout → ESCALATE, Kafka down → refuse.
+      Verify:   fault-injection tests for each row of asco-orchestrator.md §4's failure table
+
+**Checkpoint:** a transfer negotiates end to end against stub rail quotes and cannot be talked
+into an uncited approval.
+
+---
+
+## Phase 5 — US4: audit & rails
+
+- [ ] T050 [US4] Append-only audit store (no UPDATE/DELETE grant) consuming Kafka `asco.audit`.
+- [ ] T051 [US4] `AuditRecord` emission on every agent turn and guardrail decision.
+      Verify:   every terminal state has ≥ 1 record per participating actor
+- [ ] T052 [P] [US4] Ripple rail adapter.
+- [ ] T053 [P] [US4] PAPSS rail adapter.
+- [ ] T054 [P] [US4] SWIFT rail adapter.
+- [ ] T055 [US4] Bounded retry on `FAILED` — at most 2 alternate rails, per domain-model §4.
+
+**Checkpoint:** a settlement completes on a real rail and reconciles from camt.053.
+
+---
+
+## Phase 6 — Hardening
+
+- [ ] T060 [POL] Determinism harness: replay one transfer 50× against a pinned model + seed.
+      Done:     identical `outcome` and `rail` every time; variance is a release blocker
+- [ ] T061 [POL] Measure FP8 (and FP4) reasoning degradation before adopting either.
+      Done:     a number in PLAN.md, not an assumption
+- [ ] T062 [POL] Latency against the RTGS SLA window, under concurrent load.
+- [ ] T063 [POL] `docker-compose.yml` — every service + Kafka + Postgres, so integration tests use
+      a real broker rather than a mock.
+
+---
+
+## Phase 7 — Polish
+
+- [ ] T070 [POL] Fill `docs/project-structure.md` with the real tree once `services/` exists.
+- [ ] T071 [POL] Placeholder sweep: no `TODO`/`FIXME`/stub body/hard-coded sample data remains
+      outside tasks that declared it, and each declared one has an open follow-up ID.
+- [ ] T072 [POL] Close every open question in `docs/design/*.md` §10, or convert it to a task.

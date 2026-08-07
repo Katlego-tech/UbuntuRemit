@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>UbuntuRemit | Wallet &amp; History</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-primary-fixed-variant": "#24501e",
+              "on-secondary": "#ffffff",
+              "outline-variant": "#c2c9bb",
+              "surface-container": "#edeeed",
+              "primary": "#164212",
+              "surface-dim": "#d9dad9",
+              "outline": "#72796d",
+              "on-primary": "#ffffff",
+              "on-primary-fixed": "#002201",
+              "tertiary": "#2b3b49",
+              "on-secondary-fixed": "#241a00",
+              "secondary-fixed": "#ffe088",
+              "on-surface": "#191c1c",
+              "on-tertiary-fixed-variant": "#394857",
+              "on-secondary-fixed-variant": "#574500",
+              "surface-variant": "#e1e3e2",
+              "on-surface-variant": "#42493e",
+              "on-secondary-container": "#745c00",
+              "secondary-fixed-dim": "#e9c349",
+              "secondary": "#735c00",
+              "on-error-container": "#93000a",
+              "surface-container-lowest": "#ffffff",
+              "error-container": "#ffdad6",
+              "tertiary-container": "#425261",
+              "on-primary-container": "#9ed090",
+              "primary-container": "#2e5a27",
+              "surface-container-low": "#f3f4f3",
+              "tertiary-fixed": "#d4e4f6",
+              "surface-container-highest": "#e1e3e2",
+              "surface-container-high": "#e7e8e7",
+              "on-error": "#ffffff",
+              "inverse-primary": "#a1d493",
+              "surface-bright": "#f9f9f8",
+              "background": "#f9f9f8",
+              "surface": "#f9f9f8",
+              "inverse-surface": "#2e3131",
+              "on-tertiary": "#ffffff",
+              "error": "#ba1a1a",
+              "tertiary-fixed-dim": "#b8c8da",
+              "secondary-container": "#fed65b",
+              "inverse-on-surface": "#f0f1f0",
+              "primary-fixed-dim": "#a1d493",
+              "primary-fixed": "#bdf0ad",
+              "on-background": "#191c1c",
+              "surface-tint": "#3c6934",
+              "on-tertiary-fixed": "#0d1d2a",
+              "on-tertiary-container": "#b4c5d6"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .compliance-glow {
+            box-shadow: 0 0 15px rgba(22, 66, 18, 0.08);
+        }
+        .editorial-asymmetry {
+            clip-path: polygon(0 0, 100% 0, 100% 95%, 0% 100%);
+        }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface antialiased">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-[#f9f9f8]/70 backdrop-blur-md shadow-sm shadow-[#191c1c]/5 flex justify-between items-center px-6 py-3 w-full">
+<div class="flex items-center gap-4">
+<span class="text-xl font-black text-[#164212] tracking-tight font-manrope">UbuntuRemit</span>
+</div>
+<div class="flex items-center gap-4">
+<div class="hidden md:flex items-center bg-surface-container-high rounded-full px-4 py-1.5 gap-2">
+<span class="material-symbols-outlined text-outline text-sm">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm w-48 font-label" placeholder="Search transactions..." type="text"/>
+</div>
+<button class="p-2 rounded-full hover:bg-slate-100 transition-colors">
+<span class="material-symbols-outlined text-[#164212]">notifications</span>
+</button>
+<button class="p-2 rounded-full hover:bg-slate-100 transition-colors">
+<span class="material-symbols-outlined text-[#164212]">verified_user</span>
+</button>
+<div class="h-8 w-8 rounded-full bg-primary-container flex items-center justify-center text-white overflow-hidden">
+<img alt="User profile avatar" data-alt="Professional male portrait for user profile avatar, clean studio lighting, corporate style" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB52-vKL10Las4Tpv99Jcg6tyRjsAc7M7uy-DjLfN4gbn3FoZ46oX2CVllitewo4Wrwj3LceA2pDLL7Yh2yovnhQN0bDselr4sbNh77CKjR6-tHXOPzsaaEp3lO-ibVudM8WZwFhXhN3s_9wRRD8EXwumwFeflr1rA4SbrXzJt2HmPDNSOThio7chbz6i8xGYnPkNWtaGIfaAX0YbjafL8DmmXcb5jL3ygKbqOolIL39VEMWiclHLJVqClFAoADcaN1LasC4csrurY"/>
+</div>
+</div>
+</header>
+<!-- SideNavBar -->
+<aside class="hidden md:flex h-screen w-64 fixed left-0 top-0 bg-[#f9f9f8] flex-col py-6 space-y-4 z-40">
+<div class="px-6 mb-8 pt-12">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">account_balance</span>
+</div>
+<div>
+<p class="text-[#164212] font-black uppercase tracking-widest text-xs">UbuntuRemit</p>
+<p class="text-xs text-outline font-semibold">Institutional Grade</p>
+</div>
+</div>
+</div>
+<nav class="flex-grow space-y-1">
+<a class="flex items-center gap-3 px-6 py-3 text-slate-600 hover:bg-slate-200/50 hover:translate-x-1 transition-all duration-200 rounded-xl mx-2 font-semibold text-sm" href="#">
+<span class="material-symbols-outlined">dashboard</span> Dashboard
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-600 hover:bg-slate-200/50 hover:translate-x-1 transition-all duration-200 rounded-xl mx-2 font-semibold text-sm" href="#">
+<span class="material-symbols-outlined">payments</span> Send Money
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-600 hover:bg-slate-200/50 hover:translate-x-1 transition-all duration-200 rounded-xl mx-2 font-semibold text-sm" href="#">
+<span class="material-symbols-outlined">security</span> Compliance
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 bg-[#164212] text-white rounded-xl mx-2 font-semibold text-sm shadow-md" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">history</span> Wallet &amp; History
+            </a>
+</nav>
+<div class="px-4 mt-auto space-y-1 pt-6">
+<button class="w-full flex items-center justify-center gap-2 bg-gradient-to-br from-primary to-primary-container text-white py-3 rounded-xl font-bold text-sm shadow-lg active:scale-95 transition-all mb-4">
+<span class="material-symbols-outlined">add</span> New Transfer
+            </button>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-600 hover:bg-slate-200/50 rounded-xl mx-2 font-semibold text-sm" href="#">
+<span class="material-symbols-outlined">settings</span> Settings
+            </a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-600 hover:bg-slate-200/50 rounded-xl mx-2 font-semibold text-sm" href="#">
+<span class="material-symbols-outlined">contact_support</span> Support
+            </a>
+</div>
+</aside>
+<!-- Main Canvas -->
+<main class="md:ml-64 pt-20 px-6 pb-20">
+<div class="max-w-6xl mx-auto">
+<!-- Wallet Header Section -->
+<div class="mb-12 flex flex-col md:flex-row justify-between items-end gap-6">
+<div>
+<h1 class="font-headline text-4xl font-extrabold text-primary tracking-tight mb-2">Wallet &amp; History</h1>
+<p class="text-on-surface-variant font-medium">Real-time settlement tracking across the Ubuntu network.</p>
+</div>
+<div class="bg-surface-container-high p-6 rounded-xl flex items-center gap-8 shadow-sm">
+<div>
+<p class="text-xs font-bold uppercase tracking-wider text-outline mb-1">Available Balance</p>
+<p class="font-headline text-2xl font-black text-primary">$12,450.00 <span class="text-sm font-semibold text-outline-variant">USD</span></p>
+</div>
+<div class="h-10 w-px bg-outline-variant/30"></div>
+<div>
+<p class="text-xs font-bold uppercase tracking-wider text-outline mb-1">Exchange Rate</p>
+<p class="font-headline text-lg font-bold text-secondary">1 USD = 1,420 NGN</p>
+</div>
+</div>
+</div>
+<!-- Bento Grid - Key Stats -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+<div class="bg-surface-container-low rounded-xl p-6 border-l-4 border-primary">
+<div class="flex justify-between items-start mb-4">
+<span class="material-symbols-outlined text-primary text-3xl">trending_up</span>
+<span class="bg-primary-fixed text-on-primary-fixed-variant text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">Monthly Outbound</span>
+</div>
+<p class="text-3xl font-headline font-black text-on-surface">$4,200</p>
+<p class="text-sm text-outline font-medium mt-1">+12% from last month</p>
+</div>
+<div class="bg-surface-container-low rounded-xl p-6 border-l-4 border-secondary">
+<div class="flex justify-between items-start mb-4">
+<span class="material-symbols-outlined text-secondary text-3xl">verified</span>
+<span class="bg-secondary-container text-on-secondary-container text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">ISO 20022 Verified</span>
+</div>
+<p class="text-3xl font-headline font-black text-on-surface">100%</p>
+<p class="text-sm text-outline font-medium mt-1">Compliance Health Score</p>
+</div>
+<div class="bg-surface-container-low rounded-xl p-6 border-l-4 border-tertiary">
+<div class="flex justify-between items-start mb-4">
+<span class="material-symbols-outlined text-tertiary text-3xl">speed</span>
+<span class="bg-tertiary-fixed text-on-tertiary-fixed-variant text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">Avg Speed</span>
+</div>
+<p class="text-3xl font-headline font-black text-on-surface">4.2s</p>
+<p class="text-sm text-outline font-medium mt-1">Ripple Ledger Settlement</p>
+</div>
+</div>
+<!-- Transaction List Section -->
+<div class="space-y-6">
+<div class="flex justify-between items-center px-2">
+<h2 class="font-headline text-xl font-bold text-primary">Recent Transfers</h2>
+<button class="text-primary font-bold text-sm flex items-center gap-1 hover:underline">
+                        Download Report <span class="material-symbols-outlined text-sm">download</span>
+</button>
+</div>
+<!-- Transaction Card 1 (In Progress) -->
+<div class="bg-surface-container-lowest rounded-xl p-6 compliance-glow transition-all hover:translate-y-[-2px]">
+<div class="flex flex-col lg:flex-row gap-8">
+<!-- Left Info -->
+<div class="lg:w-1/4 flex items-center gap-4">
+<div class="w-12 h-12 bg-secondary-container/20 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">outbound</span>
+</div>
+<div>
+<p class="font-bold text-on-surface">Abiola Dankwa</p>
+<p class="text-xs text-outline font-medium">Ref: UB-99420-X</p>
+<div class="flex items-center gap-1 mt-1">
+<span class="material-symbols-outlined text-[14px] text-secondary">verified</span>
+<span class="text-[10px] font-bold text-secondary uppercase tracking-tighter">ISO 20022 Compliant</span>
+</div>
+</div>
+</div>
+<!-- Amount Info -->
+<div class="lg:w-1/5 flex flex-col justify-center">
+<p class="text-xl font-headline font-black text-primary">$1,200.00</p>
+<p class="text-xs font-semibold text-outline">≈ 1,704,000 NGN</p>
+</div>
+<!-- Status Timeline -->
+<div class="flex-grow flex items-center">
+<div class="w-full relative flex justify-between items-center">
+<!-- Background Line -->
+<div class="absolute h-0.5 w-full bg-surface-container-high top-1/2 -translate-y-1/2 z-0"></div>
+<div class="absolute h-0.5 w-2/3 bg-primary top-1/2 -translate-y-1/2 z-0"></div>
+<!-- Node 1: Initiated -->
+<div class="relative z-10 flex flex-col items-center gap-2">
+<div class="w-4 h-4 rounded-full bg-primary border-4 border-surface-container-lowest"></div>
+<span class="text-[10px] font-bold text-primary uppercase">Initiated</span>
+</div>
+<!-- Node 2: Validated -->
+<div class="relative z-10 flex flex-col items-center gap-2">
+<div class="w-4 h-4 rounded-full bg-primary border-4 border-surface-container-lowest"></div>
+<span class="text-[10px] font-bold text-primary uppercase">Validated</span>
+</div>
+<!-- Node 3: Settled on Ripple -->
+<div class="relative z-10 flex flex-col items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-primary flex items-center justify-center border-4 border-surface-container-lowest">
+<span class="material-symbols-outlined text-[12px] text-white">bolt</span>
+</div>
+<span class="text-[10px] font-bold text-primary uppercase">Settling</span>
+</div>
+<!-- Node 4: Delivered -->
+<div class="relative z-10 flex flex-col items-center gap-2">
+<div class="w-4 h-4 rounded-full bg-surface-container-high border-4 border-surface-container-lowest"></div>
+<span class="text-[10px] font-bold text-outline uppercase">Delivered</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Transaction Card 2 (Completed) -->
+<div class="bg-surface-container-low/50 rounded-xl p-6 transition-all hover:bg-surface-container-low">
+<div class="flex flex-col lg:flex-row gap-8 opacity-80">
+<div class="lg:w-1/4 flex items-center gap-4">
+<div class="w-12 h-12 bg-primary-container/10 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div>
+<p class="font-bold text-on-surface">Kwame Mensah</p>
+<p class="text-xs text-outline font-medium">Ref: UB-99381-R</p>
+<div class="flex items-center gap-1 mt-1">
+<span class="material-symbols-outlined text-[14px] text-secondary">verified</span>
+<span class="text-[10px] font-bold text-secondary uppercase tracking-tighter">ISO 20022 Compliant</span>
+</div>
+</div>
+</div>
+<div class="lg:w-1/5 flex flex-col justify-center">
+<p class="text-xl font-headline font-black text-on-surface">$500.00</p>
+<p class="text-xs font-semibold text-outline">≈ 710,000 NGN</p>
+</div>
+<div class="flex-grow flex items-center">
+<div class="w-full relative flex justify-between items-center">
+<div class="absolute h-0.5 w-full bg-primary top-1/2 -translate-y-1/2 z-0"></div>
+<div class="relative z-10 flex flex-col items-center gap-2"><div class="w-4 h-4 rounded-full bg-primary"></div><span class="text-[10px] font-bold text-primary uppercase">Initiated</span></div>
+<div class="relative z-10 flex flex-col items-center gap-2"><div class="w-4 h-4 rounded-full bg-primary"></div><span class="text-[10px] font-bold text-primary uppercase">Validated</span></div>
+<div class="relative z-10 flex flex-col items-center gap-2"><div class="w-4 h-4 rounded-full bg-primary"></div><span class="text-[10px] font-bold text-primary uppercase">Settled</span></div>
+<div class="relative z-10 flex flex-col items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-primary flex items-center justify-center shadow-lg">
+<span class="material-symbols-outlined text-[14px] text-white">task_alt</span>
+</div>
+<span class="text-[10px] font-bold text-primary uppercase">Delivered</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Transaction Card 3 (Completed) -->
+<div class="bg-surface-container-low/50 rounded-xl p-6 transition-all hover:bg-surface-container-low">
+<div class="flex flex-col lg:flex-row gap-8 opacity-80">
+<div class="lg:w-1/4 flex items-center gap-4">
+<div class="w-12 h-12 bg-primary-container/10 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div>
+<p class="font-bold text-on-surface">Zahara Logistics Ltd</p>
+<p class="text-xs text-outline font-medium">Ref: UB-99377-B</p>
+<div class="flex items-center gap-1 mt-1">
+<span class="material-symbols-outlined text-[14px] text-secondary">verified</span>
+<span class="text-[10px] font-bold text-secondary uppercase tracking-tighter">ISO 20022 Compliant</span>
+</div>
+</div>
+</div>
+<div class="lg:w-1/5 flex flex-col justify-center">
+<p class="text-xl font-headline font-black text-on-surface">$2,840.00</p>
+<p class="text-xs font-semibold text-outline">≈ 4,032,800 NGN</p>
+</div>
+<div class="flex-grow flex items-center">
+<div class="w-full relative flex justify-between items-center">
+<div class="absolute h-0.5 w-full bg-primary top-1/2 -translate-y-1/2 z-0"></div>
+<div class="relative z-10 flex flex-col items-center gap-2"><div class="w-4 h-4 rounded-full bg-primary"></div><span class="text-[10px] font-bold text-primary uppercase">Initiated</span></div>
+<div class="relative z-10 flex flex-col items-center gap-2"><div class="w-4 h-4 rounded-full bg-primary"></div><span class="text-[10px] font-bold text-primary uppercase">Validated</span></div>
+<div class="relative z-10 flex flex-col items-center gap-2"><div class="w-4 h-4 rounded-full bg-primary"></div><span class="text-[10px] font-bold text-primary uppercase">Settled</span></div>
+<div class="relative z-10 flex flex-col items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-primary flex items-center justify-center shadow-lg">
+<span class="material-symbols-outlined text-[14px] text-white">task_alt</span>
+</div>
+<span class="text-[10px] font-bold text-primary uppercase">Delivered</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Compliance Detail Banner -->
+<div class="mt-16 bg-gradient-to-r from-primary to-primary-container rounded-2xl p-8 relative overflow-hidden shadow-xl">
+<div class="absolute right-0 top-0 h-full w-1/3 opacity-10">
+<span class="material-symbols-outlined text-[200px] -rotate-12 translate-x-12">security</span>
+</div>
+<div class="relative z-10 flex flex-col md:flex-row items-center gap-8">
+<div class="w-20 h-20 bg-secondary-container rounded-2xl flex items-center justify-center shadow-inner">
+<span class="material-symbols-outlined text-on-secondary-container text-4xl" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+</div>
+<div>
+<h3 class="text-white font-headline text-2xl font-bold mb-2">Institutional Trust &amp; Compliance</h3>
+<p class="text-primary-fixed-dim max-w-2xl leading-relaxed">UbuntuRemit utilizes Ripple's liquidity network and ISO 20022 messaging standards to ensure every dollar is tracked, verified, and settled with zero friction. Your transactions are backed by Tier 1 banking protocols.</p>
+</div>
+<button class="bg-surface-container-lowest text-primary px-8 py-3 rounded-xl font-bold hover:bg-primary-fixed transition-colors whitespace-nowrap">
+                        View Audit Log
+                    </button>
+</div>
+</div>
+</div>
+</main>
+<!-- Mobile Navigation -->
+<nav class="md:hidden fixed bottom-0 w-full bg-white flex justify-around py-3 px-4 shadow-[0_-4px_10px_rgba(0,0,0,0.05)] z-50">
+<button class="flex flex-col items-center gap-1 text-slate-500">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-[10px] font-bold">Dash</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-slate-500">
+<span class="material-symbols-outlined">payments</span>
+<span class="text-[10px] font-bold">Send</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">history</span>
+<span class="text-[10px] font-bold">History</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-slate-500">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-[10px] font-bold">Settings</span>
+</button>
+</nav>
+</body></html>

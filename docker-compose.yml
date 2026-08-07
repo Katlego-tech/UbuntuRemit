@@ -1,0 +1,85 @@
+# Local development and integration-test infrastructure.
+#
+# Scope today: the broker and the datastore, and nothing else. testing-strategy.md
+# requires integration tests to exercise a real Kafka and a real Postgres rather
+# than mocks, and both exist independently of any service -- so they can be stood
+# up and depended on now.
+#
+# Service containers are added by T063, as each service is built. There are no
+# entries for gateway/asco/inference/messaging/rails/audit here because none of
+# them exists yet, and a compose entry for a missing build context is a broken
+# file, not a head start.
+#
+# Image tags verified against Docker Hub on 2026-08-06. Never `:latest`
+# (architecture-defaults.md section 5).
+
+name: ubunturemit
+
+services:
+  # KRaft mode -- no ZooKeeper. Single node is correct for local dev and CI;
+  # replication factors are 1 here and MUST NOT be copied to a deployment where
+  # the audit log has to survive a broker loss.
+  kafka:
+    image: apache/kafka:4.3.1
+    container_name: ubunturemit-kafka
+    ports:
+      - "29092:29092"   # host access, for tests running outside compose
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,PLAINTEXT_HOST://:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      # Topics are created by the services that own them, with the retention the
+      # audit trail actually requires. That retention is a SARB PEM figure this
+      # project does not yet have (PLAN.md Non-negotiable I), so nothing here
+      # guesses one -- and auto-creation is off so a typo'd topic name fails loudly
+      # instead of silently succeeding.
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD", "/opt/kafka/bin/kafka-broker-api-versions.sh", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 20s
+
+  postgres:
+    image: postgres:18.4-trixie
+    container_name: ubunturemit-postgres
+    ports:
+      # Not 5432. Sibling projects on this machine already bind the default
+      # (FrameFlow's db holds it), and a compose file that only works when no
+      # other project is running is a compose file that fails on demo day.
+      # Override with UBUNTUREMIT_PG_PORT if 55432 is taken too.
+      - "${UBUNTUREMIT_PG_PORT:-55432}:5432"
+    environment:
+      POSTGRES_USER: ubunturemit
+      # Local-only credential. Every deployed environment injects its own; there
+      # is no shared default password to leak.
+      POSTGRES_PASSWORD: ubunturemit
+      POSTGRES_DB: ubunturemit
+    volumes:
+      # Postgres 18+ wants a single mount at /var/lib/postgresql, not at
+      # .../data -- the image refuses to start on the old layout, because it
+      # puts the data in a version-named subdirectory so pg_upgrade --link can
+      # work without crossing a mount boundary.
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ubunturemit -d ubunturemit"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+volumes:
+  kafka-data:
+  postgres-data:

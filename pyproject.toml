@@ -1,0 +1,51 @@
+# Workspace root. This is not a distributable package -- it exists to pin the
+# toolchain and hold the lint/test configuration every service inherits.
+#
+# Versions here are pinned exactly, and were verified against their release
+# pages on 2026-08-06 rather than recalled (architecture-defaults.md section 5,
+# PLAN.md Non-negotiable I). Do not bump one from memory.
+
+[project]
+name = "ubunturemit"
+version = "0.0.0"
+description = "Workspace root for the UbuntuRemit services."
+requires-python = "==3.13.*"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "pytest==9.1.1",
+    "ruff==0.16.1",
+]
+
+[tool.uv]
+package = false
+
+# Service packages are added here as they are built. The glob is deliberately
+# absent until the first one lands: uv resolves an empty workspace fine, but a
+# members glob matching nothing is a footgun that reads as "services exist".
+# See docs/project-structure.md.
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+src = ["services"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle
+    "F",    # pyflakes
+    "I",    # isort
+    "B",    # bugbear
+    "UP",   # pyupgrade
+    "S",    # bandit -- this is a payments system
+    "DTZ",  # naive datetimes are a settlement-timestamp bug waiting to happen
+]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/*" = ["S101"]  # assert is the point of a test
+
+[tool.pytest.ini_options]
+addopts = "-q --strict-markers --strict-config"
+testpaths = ["services"]
+xfail_strict = true
