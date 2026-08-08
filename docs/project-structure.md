@@ -31,6 +31,15 @@ UbuntuRemit/
 │   └── *.md                       ⚪ untracked — the nine process docs (git-workflow,
 │                                     testing-strategy, security-basics, code-analysis, …)
 ├── pyproject.toml                 ✅ uv workspace root — pinned toolchain, ruff + pytest config
+├── libs/                          ✅ shared libraries — owned by no service, imported by several
+│   └── domain/                    ✅ T017 — the canonical domain-model.md §3 entities
+│       ├── pyproject.toml         ✅ workspace member `ubunturemit-domain`, zero runtime deps
+│       ├── src/ubunturemit_domain/
+│       │   ├── money.py           ✅ Money (integral minor units), CurrencyCode
+│       │   ├── party.py           ✅ Party, CountryCode
+│       │   ├── quote.py           ✅ Corridor, FxQuote, TransferQuote, RateSource
+│       │   └── transfer.py        ✅ Transfer + the §4 state machine, the closed §5 enums
+│       └── tests/                 ✅ 100 tests — the §8 property, contract and state-machine suites
 ├── uv.lock                        ✅ every dependency pinned, committed
 ├── .python-version                ✅ 3.13.14 exactly
 ├── scripts/gate.sh                ✅ THE gate — every check lives here, and only here
@@ -101,14 +110,26 @@ them would create a distributed transaction across a negotiation that has to be 
 auditable. `services/inference` *is* separate, because a model server has a completely different
 scaling and hardware profile from orchestration logic.
 
+**`libs/` is not a service.** It holds no process, no port and no Dockerfile. `libs/domain` exists
+because the entities in [design/domain-model.md](design/domain-model.md) §3 are shared by `gateway`,
+`asco` and `messaging` and owned by none of them — which is the same reason this is a monorepo at
+all. One directory per bounded context still holds; a library is not a context. The dependency
+arrow points one way and is tested: nothing in `libs/domain` may import from `services/`.
+
+Resolved at T017 (2026-08-08) over the two alternatives in domain-model.md §7. The one that
+mattered was per-service duplication with a contract test: a contract test catches *field* drift but
+not *behaviour* drift, and §8 requires proving "no arithmetic path yields a non-integer
+`minorUnits`" — which would have become three separate proofs of three separate rounding
+implementations, in a system where rounding decides who keeps the fraction.
+
 **`services/` has no directories in it yet, deliberately.** The toolchain that will build them is
 real and pinned (`pyproject.toml`, `uv.lock`, `.python-version`), the gate that will check them runs
 locally and in CI, and the infrastructure they will talk to comes up with `docker compose up`. What
 does not exist is a `services/<name>/` containing an empty `__init__.py` — that is the "empty
-component" AGENTS.md §2a forbids, and it would also have to guess where the shared domain entities
-live, which is an open question in [design/domain-model.md](design/domain-model.md) §9. Each service
-directory gets created by the first task that puts real code in it: `messaging` at T028,
-`asco` at T040, `audit` at T050.
+component" AGENTS.md §2a forbids. Each service directory gets created by the first task that puts
+real code in it: `messaging` at T028, `asco` at T040, `audit` at T050. Note that `pyproject.toml`
+globs `libs/*` as workspace members but deliberately does **not** glob `services/*` yet, for the
+same reason.
 
 **`apps/web` is three self-contained HTML files, and stays that way.** No framework, no build step,
 no shared partials — the duplication across the three pages is deliberate. The export is the
@@ -154,6 +175,12 @@ Everything under `services/` is **designed but not built** — the diagrams in [
 complete enough to implement from, and `TASKS.md` Phases 3–5 give the order. The scaffold around
 them is done and verified: the toolchain resolves, the gate runs locally and in CI, and Kafka and
 Postgres come up healthy.
+
+`libs/domain` **is** built (T017) and is the first real code in the repo: the §3 entities, the §4
+state machine, and the §5 enums, under 100 tests covering the three suites §8 asks for — the
+minor-units property, the exhaustive `TransferState × TransferState` matrix, and the contract check
+that no entity carries a field the diagram doesn't draw. It has no runtime dependencies, and it
+should keep none: a dependency added there is one every service inherits.
 
 `apps/web` is real and serves, but is static: the figures on the pages are the mockup's values, and
 the pages load Tailwind, fonts and one image from third-party hosts. T024 self-hosts those

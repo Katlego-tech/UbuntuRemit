@@ -1,0 +1,23 @@
+# The canonical §3 entities from docs/design/domain-model.md.
+#
+# This is a library, not a service: no process, no port, no Dockerfile. It is
+# imported by `gateway`, `asco` and `messaging`, and it depends on none of them
+# -- nothing here may ever import from `services/`. See domain-model.md §6.
+#
+# Runtime dependencies are empty and should stay that way. These types are the
+# vocabulary three bounded contexts agree on; a dependency added here is one
+# every service inherits.
+
+[project]
+name = "ubunturemit-domain"
+version = "0.0.0"
+description = "Canonical domain entities shared by every UbuntuRemit service."
+requires-python = "==3.13.*"
+dependencies = []
+
+[build-system]
+requires = ["hatchling==1.31.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ubunturemit_domain"]

@@ -1,6 +1,6 @@
 # Design — `domain` (the core model)
 
-**Status:** agreed · **Owner:** Kirito (Claude) · **Tasks:** T003, T030–T034 ·
+**Status:** agreed · **Owner:** Kirito (Claude) · **Tasks:** T003, **T017**, T030–T034 ·
 **Spec:** [SPEC.md](../../SPEC.md) US1–US4
 
 > The nouns of UbuntuRemit. Every service and the web client build to the classes below.
@@ -202,9 +202,14 @@ audit`. Earlier revisions of this table named `services/ledger`, `services/compl
 `services/liquidity`; those services do not exist in any other document and were never built. The
 rows below are the reconciled placements.
 
+`libs/` is **not** a service and holds no process, no port and no Dockerfile. It exists because the
+§3 entities are shared by three bounded contexts and owned by none, which is the same reason
+[../project-structure.md](../project-structure.md) gives for this being a monorepo at all. One
+directory per bounded context still holds — `libs/domain` is a library, not a context.
+
 | Path | New? | Responsibility |
 | --- | --- | --- |
-| **unresolved — see §9** | planned | Canonical Python implementation of the §3 entities (`Transfer`, `Money`, `Party`, `FxQuote`). Shared by `gateway`, `asco` and `messaging`, so it belongs to none of them |
+| `libs/domain/` | **exists** | Canonical Python implementation of the §3 entities (`Money`, `Corridor`, `FxQuote`, `TransferQuote`, `Party`, `ComplianceDeclaration`, `Transfer`) and the §5 enums. A uv workspace member imported by `gateway`, `asco` and `messaging`; it depends on no service and no service's types |
 | `services/asco/guardrails/exit.py` | planned | `ComplianceVerdict` + the deterministic validators that check it (citation check — asco-orchestrator §6) |
 | `services/asco/agents/strategist.py` | planned | `LiquidityProposal`, rail cost model (asco-orchestrator §6) |
 | `apps/web/*.html` | exists | Static pages; carry no domain logic and no arithmetic |
@@ -214,6 +219,8 @@ rows below are the reconciled placements.
 | Decision | Chosen | Rejected, and why |
 | --- | --- | --- |
 | Monetary representation | integral minor units | `Decimal`/float — float is disqualifying in settlement; `Decimal` is fine server-side but doesn't survive JSON, so minor units are the wire format either way |
+| Where the §3 entities live (2026-08-08, closes the §9 question) | `libs/domain/`, one uv workspace package | **Duplication per service + a contract test** — the test catches *field* drift but not *behaviour* drift, and §8 requires proving "no arithmetic path yields a non-integer `minorUnits`", which would become three separate proofs of three separate rounding implementations. **`services/shared/`** — same single copy, but it makes `services/` stop meaning "a deployable bounded context". The accepted cost is that the three services share one version of the domain, so a breaking change to it lands everywhere at once |
+| Rounding when a rate is applied | `ROUND_HALF_EVEN`, applied once at the boundary back to integer minor units | `ROUND_HALF_UP` / truncation — truncation silently biases every conversion in one party's favour, and half-up biases upward across a large book. Half-even is unbiased over many operations. **This is an engineering default, not a confirmed commercial term** — see §9 |
 | Verdict shape | outcome + risk score + **cited rules** | outcome alone — an uncitable verdict can't be defended to an auditor, which is the whole product claim |
 | Retry on failure | bounded, max 2 alternate rails | unbounded retry — it can silently blow an RTGS SLA window |
 | Rejected → retry | new `Transfer` id | reopening the rejected one — destroys the audit record of the rejection |
@@ -236,10 +243,31 @@ replay (defaults §2).
       corporate? Affects whether `Party.bic` is nullable.
 - [ ] `FxQuote.expiresAt` — what is the guaranteed-rate hold window? The mockup says "Guaranteed"
       but names no duration, and guessing one is a fabricated commercial term.
-- [ ] **Where do the §3 entities live?** `Transfer`, `Money`, `Party` and `FxQuote` are shared by
-      `gateway` (parses pain.001 into them), `asco` (negotiates over them) and `messaging` (emits
-      pacs.008 from them), so they belong to no single service — but the topology in
-      [../project-structure.md](../project-structure.md) has no shared-library slot, and inventing
-      one here would be structure no merged document has. Two candidates: a workspace library
-      (`libs/domain/`, imported by each service) or duplication with a contract test enforcing §3.
-      **Blocks T017.** Resolve before the first entity is written in Python.
+- [x] **Where do the §3 entities live?** **Resolved 2026-08-08 by Kirito: `libs/domain/`, a single
+      uv workspace package.** Rationale and the two rejected alternatives are in §7; the placement
+      is now a row in §6 and appears in the tree in
+      [../project-structure.md](../project-structure.md). **T017 is unblocked**, and the entities
+      are implemented.
+
+- [ ] **How does a `Money` cross a `Corridor`?** §3 draws `Money.applyRate(decimal) Money` and
+      nothing else, so the implementation applies a rate *within* one currency (fees, margins) and
+      there is no drawn path that takes a `Money` in `Corridor.source` and returns one in
+      `Corridor.target`. `TransferQuote` needs exactly that to derive `recipientReceives` from
+      `send`. The candidates are a `convert()` on `FxQuote` (it is the object that knows both
+      currencies and the rate) or a wider `applyRate` — but both add drawn structure, so the
+      diagram changes first. **Blocks the pricing path, not T017.** Nothing currently prices a
+      transfer, so nothing is waiting on it today; **T035 will be.**
+
+- [ ] **Is `ROUND_HALF_EVEN` the right rounding for this book?** §7 records it as a deliberate,
+      unbiased default, and `libs/domain` applies it in exactly one place. Rounding direction
+      decides who keeps the sub-minor-unit fraction on every conversion, which is a commercial
+      term as much as a technical one. Confirm against SARB guidance and each rail's own
+      convention before the first live settlement — a mismatch with the rail is a reconciliation
+      break, not a rounding preference.
+
+- [ ] **Which §3 attributes are nullable?** The class diagram carries no nullability annotations,
+      and the `Party.bic` question above is really one instance of a general gap. `libs/domain`
+      currently treats `Transfer.rail` and `Transfer.settlementSeconds` as absent until they are
+      known — a transfer at `INITIATED` has no rail and no settlement time, and a required field
+      there could only be satisfied by inventing a value. Everything else is required exactly as
+      drawn. Annotate §3 properly rather than leaving this inferred from the code.

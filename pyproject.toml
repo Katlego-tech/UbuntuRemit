@@ -16,15 +16,22 @@ dependencies = []
 dev = [
     "pytest==9.1.1",
     "ruff==0.16.1",
+    "hypothesis==6.165.2",
+    "ubunturemit-domain",
 ]
 
 [tool.uv]
 package = false
 
-# Service packages are added here as they are built. The glob is deliberately
-# absent until the first one lands: uv resolves an empty workspace fine, but a
-# members glob matching nothing is a footgun that reads as "services exist".
-# See docs/project-structure.md.
+# The workspace. `libs/*` holds shared libraries owned by no single service --
+# currently just `libs/domain`, the canonical §3 entities (domain-model.md §6).
+# `services/*` is deliberately NOT globbed yet: no service exists, and a members
+# glob matching nothing reads as "services exist". Add it with the first one.
+[tool.uv.workspace]
+members = ["libs/*"]
+
+[tool.uv.sources]
+ubunturemit-domain = { workspace = true }
 
 [tool.ruff]
 target-version = "py313"
@@ -47,5 +54,5 @@ select = [
 
 [tool.pytest.ini_options]
 addopts = "-q --strict-markers --strict-config"
-testpaths = ["services"]
+testpaths = ["libs", "services"]
 xfail_strict = true
