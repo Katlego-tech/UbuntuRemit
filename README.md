@@ -102,6 +102,7 @@ UbuntuRemit/
 │   └── project-structure.md               the actual layout
 ├── apps/web/                              static HTML client — the Stitch export, as-is
 ├── legacy/stitch-mockups/                 frozen visual reference — do not edit
+├── libs/domain/                           the shared domain entities — built, 100 tests
 └── services/                              gateway · asco · messaging · audit (planned)
 ```
 
