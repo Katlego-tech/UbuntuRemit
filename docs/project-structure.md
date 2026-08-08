@@ -66,7 +66,7 @@ The collaboration layer — `AGENTS.md`, `STATUS.md`, `TASKS.md`, the per-tool A
 It still exists on the maintainer's machine and is still how the project is actually run; it's kept
 out because the repo is public and that layer is working process, not product.
 
-Two consequences, both real:
+Three consequences, all real:
 
 - **A fresh clone gets none of it.** A second machine or a collaborator has to copy it across by
   hand, or re-bootstrap from the Cultivation kit. Nothing in the build depends on it — the gate,
@@ -74,6 +74,18 @@ Two consequences, both real:
 - **Untracking is not un-publishing.** Every version of those files up to `a443a5d` is still in this
   repo's history and on the PR #1 page. Removing them going forward does not remove them from the
   public record; that would need a history rewrite or a private repo.
+- **⚠ A clone that predates the untracking will have these files *deleted* the first time it
+  pulls.** This already happened once, on 2026-08-07, and cost all 22 files until they were
+  recovered from history. `git rm --cached` leaves the working-tree file alone, but it records a
+  deletion in the commit, and git's "never touch untracked files" protection only covers paths that
+  are untracked in **both** the old and the new commit. Crossing a boundary where a path goes
+  tracked → deleted removes the working copy. `.gitignore` does not protect it: ignore rules only
+  govern files git isn't already tracking.
+
+  So on any machine that still has these files from before `174c8f4`, **copy them somewhere outside
+  the working tree before pulling.** If they're already gone, they are recoverable — restore with
+  `git show a443a5d:<path> > <path>`, and *not* with `git checkout a443a5d -- <path>`, which also
+  stages the file and would re-track exactly what was untracked.
 
 ## Why this shape
 
