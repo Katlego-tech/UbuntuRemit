@@ -50,9 +50,12 @@ select = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"**/tests/*" = ["S101"]  # assert is the point of a test
+"**/tests/*" = ["S101"]      # assert is the point of a test
+"scripts/test_*.py" = ["S101"]  # the gate's own tools are tested beside them
 
 [tool.pytest.ini_options]
 addopts = "-q --strict-markers --strict-config"
-testpaths = ["libs", "services"]
+# `scripts` is here because the gate has code of its own now (check_markup.py),
+# and a check nobody tests is a check nobody can trust to fail correctly.
+testpaths = ["libs", "services", "scripts"]
 xfail_strict = true
