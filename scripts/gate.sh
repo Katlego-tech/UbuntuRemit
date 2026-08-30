@@ -76,27 +76,28 @@ project_dirs() {
 # exist at all (only `python3`), which is exactly how the old gate silently skipped
 # every Python suite it was supposed to run.
 py_runner=""      # how to invoke a tool, e.g. "uv run --frozen" or "/path/.venv/bin/python -m"
+py_exe=""         # how to run a *script*, e.g. "uv run --frozen python" or "/path/.venv/bin/python"
 py_kind=""
 
 resolve_python() {
   local dir="$1"
-  py_runner=""; py_kind=""
+  py_runner=""; py_exe=""; py_kind=""
 
   if [ -x "$dir/.venv/bin/python" ]; then
-    py_runner="$dir/.venv/bin/python -m"; py_kind="venv ($dir/.venv)"; return 0
+    py_exe="$dir/.venv/bin/python"; py_runner="$py_exe -m"; py_kind="venv ($dir/.venv)"; return 0
   fi
   if [ -x "$root/.venv/bin/python" ]; then
-    py_runner="$root/.venv/bin/python -m"; py_kind="venv ($root/.venv)"; return 0
+    py_exe="$root/.venv/bin/python"; py_runner="$py_exe -m"; py_kind="venv ($root/.venv)"; return 0
   fi
   if [ -f "$dir/uv.lock" ] && command -v uv >/dev/null 2>&1; then
-    py_runner="uv run --frozen"; py_kind="uv (uv.lock)"; return 0
+    py_runner="uv run --frozen"; py_exe="$py_runner python"; py_kind="uv (uv.lock)"; return 0
   fi
   if command -v uv >/dev/null 2>&1 && [ -f "$dir/pyproject.toml" ]; then
-    py_runner="uv run"; py_kind="uv"; return 0
+    py_runner="uv run"; py_exe="$py_runner python"; py_kind="uv"; return 0
   fi
   for candidate in python3 python; do
     if command -v "$candidate" >/dev/null 2>&1 && "$candidate" -c "import pytest" >/dev/null 2>&1; then
-      py_runner="$candidate -m"; py_kind="$candidate on PATH"; return 0
+      py_exe="$candidate"; py_runner="$candidate -m"; py_kind="$candidate on PATH"; return 0
     fi
   done
   return 1
@@ -243,6 +244,35 @@ check_web_links() {
   ran=$((ran + 1))
 }
 
+# The other half of the same task (T009). A link check proves the pages point at
+# each other; it says nothing about whether a page parses. Tags that do not nest
+# leave the layout to the browser's error recovery, which is not a design anyone
+# approved -- and `apps/web` is a frozen export whose only other test is a human
+# holding it beside a PNG, so an automated hold on its structure is worth having.
+#
+# Bash cannot parse HTML, so the checker is scripts/check_markup.py. It uses only
+# the standard library, which means it needs nothing the gate does not already
+# require to run pytest.
+check_web_markup() {
+  [ -d "$root/apps/web" ] || return 0
+
+  if [ "$list_only" -eq 1 ]; then say "   would run: apps/web markup check"; return 0; fi
+
+  step "apps/web markup check"
+
+  if ! resolve_python "$root"; then
+    bad "   no usable Python interpreter, so the markup check could not run."
+    bad "   The skip rule applies here as everywhere: a check that did not run is a"
+    bad "   failed check. Fix the environment -- e.g.  uv sync --frozen"
+    fail=1
+    return 0
+  fi
+
+  # shellcheck disable=SC2086
+  $py_exe "$root/scripts/check_markup.py" "$root"/apps/web/*.html || fail=1
+  ran=$((ran + 1))
+}
+
 # ---------------------------------------------------------- placeholders ----
 # AGENTS.md 2a is the kit's central rule -- nothing ships with a stub standing in for
 # real work -- and until now nothing enforced it mechanically. This does.
@@ -368,6 +398,7 @@ while IFS= read -r dir; do
 done < <(project_dirs)
 
 check_web_links
+check_web_markup
 placeholder_sweep
 secret_sweep
 
