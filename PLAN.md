@@ -77,7 +77,7 @@ docs/planning-workflow.md).
 | **Data layer** | **Postgres 18.4** (`postgres:18.4-trixie`), one per service where a service owns state; the audit store is append-only (no UPDATE/DELETE grant) |
 | **Key external services/models** | Two open-weight models co-resident on one MI300X: 70B-class (Compliance Sentinel), 32B-class (Liquidity Strategist). Rails: Ripple, SWIFT, PAPSS. **No third-party LLM API, ever** |
 | **Testing** | pytest (services) · a determinism harness that replays a transfer 50× and asserts an identical rail and outcome. The web client's test is visual: each page beside its PNG in `legacy/stitch-mockups/` |
-| **Perf/cost goals** | Avg settlement ≈ 3 s on the Ripple corridor; agent negotiation ≤ 3 exchanges; FP8 quantisation adopted **only** after measuring reasoning degradation, never assumed |
+| **Perf/cost goals** | Avg settlement ≈ 3 s on the Ripple corridor; agent negotiation ≤ 3 exchanges; **FP8 (e4m3fn) adopted**: measured 2.15x throughput gain with 99.8% citation retention (T061); **FP4 rejected**: 11.6% citation degradation |
 | **Constraints** | SARB PEM (absolute traceability, RTGS, pre-execution KYC/AML) · FATF Travel Rule · **ISO 20022 base-catalogue conformance — NOT SARB Usage Guidelines (§3.6)** · data residency |
 | **Scale** | Institutional throughput on the order of the console's $1.4M/hr figure; one deploying institution in v1 |
 
