@@ -1,0 +1,21 @@
+# Agentic Settlement & Compliance Orchestrator (ASCO) service.
+#
+# Bounded context: ASCO negotiation loop, entry/exit guardrails, and master orchestrator.
+# Depends on `libs/domain` and `services/messaging`.
+
+[project]
+name = "ubunturemit-asco"
+version = "0.0.0"
+description = "Agentic Settlement & Compliance Orchestrator (ASCO)."
+requires-python = "==3.13.*"
+dependencies = [
+    "ubunturemit-domain",
+    "ubunturemit-messaging",
+]
+
+[build-system]
+requires = ["hatchling==1.31.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ubunturemit_asco"]

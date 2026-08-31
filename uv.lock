@@ -5,6 +5,7 @@ requires-python = "==3.13.*"
 [manifest]
 members = [
     "ubunturemit",
+    "ubunturemit-asco",
     "ubunturemit-domain",
     "ubunturemit-messaging",
 ]
@@ -189,6 +190,7 @@ dev = [
     { name = "hypothesis" },
     { name = "pytest" },
     { name = "ruff" },
+    { name = "ubunturemit-asco" },
     { name = "ubunturemit-domain" },
     { name = "ubunturemit-messaging" },
 ]
@@ -200,6 +202,22 @@ dev = [
     { name = "hypothesis", specifier = "==6.165.2" },
     { name = "pytest", specifier = "==9.1.1" },
     { name = "ruff", specifier = "==0.16.1" },
+    { name = "ubunturemit-asco", editable = "services/asco" },
+    { name = "ubunturemit-domain", editable = "libs/domain" },
+    { name = "ubunturemit-messaging", editable = "services/messaging" },
+]
+
+[[package]]
+name = "ubunturemit-asco"
+version = "0.0.0"
+source = { editable = "services/asco" }
+dependencies = [
+    { name = "ubunturemit-domain" },
+    { name = "ubunturemit-messaging" },
+]
+
+[package.metadata]
+requires-dist = [
     { name = "ubunturemit-domain", editable = "libs/domain" },
     { name = "ubunturemit-messaging", editable = "services/messaging" },
 ]
