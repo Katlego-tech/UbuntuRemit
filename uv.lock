@@ -6,8 +6,10 @@ requires-python = "==3.13.*"
 members = [
     "ubunturemit",
     "ubunturemit-asco",
+    "ubunturemit-audit",
     "ubunturemit-domain",
     "ubunturemit-messaging",
+    "ubunturemit-rails",
 ]
 
 [[package]]
@@ -191,8 +193,10 @@ dev = [
     { name = "pytest" },
     { name = "ruff" },
     { name = "ubunturemit-asco" },
+    { name = "ubunturemit-audit" },
     { name = "ubunturemit-domain" },
     { name = "ubunturemit-messaging" },
+    { name = "ubunturemit-rails" },
 ]
 
 [package.metadata]
@@ -203,8 +207,10 @@ dev = [
     { name = "pytest", specifier = "==9.1.1" },
     { name = "ruff", specifier = "==0.16.1" },
     { name = "ubunturemit-asco", editable = "services/asco" },
+    { name = "ubunturemit-audit", editable = "services/audit" },
     { name = "ubunturemit-domain", editable = "libs/domain" },
     { name = "ubunturemit-messaging", editable = "services/messaging" },
+    { name = "ubunturemit-rails", editable = "services/rails" },
 ]
 
 [[package]]
@@ -220,6 +226,21 @@ dependencies = [
 requires-dist = [
     { name = "ubunturemit-domain", editable = "libs/domain" },
     { name = "ubunturemit-messaging", editable = "services/messaging" },
+]
+
+[[package]]
+name = "ubunturemit-audit"
+version = "0.0.0"
+source = { editable = "services/audit" }
+dependencies = [
+    { name = "ubunturemit-asco" },
+    { name = "ubunturemit-domain" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "ubunturemit-asco", editable = "services/asco" },
+    { name = "ubunturemit-domain", editable = "libs/domain" },
 ]
 
 [[package]]
@@ -242,4 +263,21 @@ requires-dist = [
     { name = "lxml", specifier = "==6.1.2" },
     { name = "pyyaml", specifier = "==6.0.3" },
     { name = "ubunturemit-domain", editable = "libs/domain" },
+]
+
+[[package]]
+name = "ubunturemit-rails"
+version = "0.0.0"
+source = { editable = "services/rails" }
+dependencies = [
+    { name = "ubunturemit-asco" },
+    { name = "ubunturemit-domain" },
+    { name = "ubunturemit-messaging" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "ubunturemit-asco", editable = "services/asco" },
+    { name = "ubunturemit-domain", editable = "libs/domain" },
+    { name = "ubunturemit-messaging", editable = "services/messaging" },
 ]
