@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Pre-commit hook: Verify staged ISO 20022 XSD schemas against policy matrix.
+
+set -euo pipefail
+
+root="$(git rev-parse --show-toplevel)"
+staged_xsds="$(git diff --cached --name-only --diff-filter=ACM | grep -E '^services/messaging/schemas/.*\.xsd$' || true)"
+
+if [ -n "$staged_xsds" ]; then
+  echo "== pre-commit: verifying staged ISO 20022 schemas =="
+  python3 -m ubunturemit_messaging.verify_schema $staged_xsds
+fi
