@@ -273,6 +273,37 @@ check_web_markup() {
   ran=$((ran + 1))
 }
 
+# ---------------------------------------------- ISO 20022 schemas (T030) ----
+# Schema governance (docs/design/iso20022-messaging.md §3.4-3.6): verify every
+# vendored XSD against the schema-policy matrix before it enters the repo or builds.
+check_iso20022_schemas() {
+  [ -d "$root/services/messaging" ] || return 0
+
+  if [ "$list_only" -eq 1 ]; then say "   would run: ISO 20022 schema verification check"; return 0; fi
+
+  step "ISO 20022 schema verification check"
+
+  if ! resolve_python "$root"; then
+    bad "   no usable Python interpreter, so schema verification could not run."
+    fail=1
+    return 0
+  fi
+
+  local schemas_dir="$root/services/messaging/schemas"
+  local xsd_files
+  xsd_files="$(find "$schemas_dir" -maxdepth 1 -name '*.xsd' 2>/dev/null || true)"
+
+  if [ -z "$xsd_files" ]; then
+    say "   clean (no XSD schemas vendored in services/messaging/schemas/ yet)"
+    ran=$((ran + 1))
+    return 0
+  fi
+
+  # shellcheck disable=SC2086
+  $py_exe "$root/services/messaging/verify_schema.py" $xsd_files || fail=1
+  ran=$((ran + 1))
+}
+
 # ---------------------------------------------------------- placeholders ----
 # AGENTS.md 2a is the kit's central rule -- nothing ships with a stub standing in for
 # real work -- and until now nothing enforced it mechanically. This does.
@@ -399,6 +430,7 @@ done < <(project_dirs)
 
 check_web_links
 check_web_markup
+check_iso20022_schemas
 placeholder_sweep
 secret_sweep
 

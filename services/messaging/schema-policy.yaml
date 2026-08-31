@@ -1,0 +1,31 @@
+# ISO 20022 Schema Policy Matrix
+#
+# Versions are NEVER hand-typed. They are extracted from the targetNamespace of the
+# downloaded XSD at vendor time (T031) and pinned with a checksum. See docs/design/iso20022-messaging.md §3.5-3.6.
+
+conformance:
+  claim: ISO_20022_BASE
+  notClaimed: SARB_PEM_CONFORMANT
+contexts:
+  base:
+    source: PUBLIC_BASE_CATALOGUE
+    retrievedOn: '2026-08-31'
+    messages:
+      pain.001.001:
+        authorizedVersion: 09
+        sha256: 05440a7e84f695e7dbc6677082f43623cd7393881b76a5e8d648ae21d7d728e3
+      pacs.008.001:
+        authorizedVersion: 08
+        sha256: 9bb360555d1981be8635aa3ed295abfe8b2d221d316193434114ad722107dcde
+      camt.053.001:
+        authorizedVersion: 08
+        sha256: ca0b135cc8e2dde5b2f99af6b6c514a8f29d6e7c6cf98e9ea84d247189868ff5
+      head.001.001:
+        authorizedVersion: '02'
+        sha256: 60f4b0abf9da2511e9215a1f5ce92838c788bc64315fe39b9f77613c0f9a4470
+  samos:
+    source: SARB_MYSTANDARDS
+    messages: {}
+  sadc_rtgs:
+    source: SARB_MYSTANDARDS
+    messages: {}

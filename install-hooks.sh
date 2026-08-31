@@ -16,7 +16,7 @@ echo "Installing the pre-push gate for this clone..."
 [ -f .githooks/pre-push ] || { echo "!! .githooks/pre-push is missing."; exit 1; }
 [ -f scripts/gate.sh ]    || { echo "!! scripts/gate.sh is missing."; exit 1; }
 
-chmod +x .githooks/pre-push scripts/gate.sh
+chmod +x .githooks/* scripts/gate.sh
 git config core.hooksPath .githooks
 echo "  core.hooksPath = $(git config core.hooksPath)"
 

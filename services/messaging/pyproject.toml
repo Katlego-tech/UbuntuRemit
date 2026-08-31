@@ -1,0 +1,22 @@
+# ISO 20022 message layer, schema governance, and validation service.
+#
+# Bounded context: ISO 20022 messaging (pain.001, pacs.008, camt.053, BAH).
+# Depends on `libs/domain` for canonical domain types.
+
+[project]
+name = "ubunturemit-messaging"
+version = "0.0.0"
+description = "ISO 20022 message building, parsing, schema governance, and validation."
+requires-python = "==3.13.*"
+dependencies = [
+    "ubunturemit-domain",
+    "pyyaml==6.0.3",
+    "lxml==6.1.2",
+]
+
+[build-system]
+requires = ["hatchling==1.31.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ubunturemit_messaging"]
