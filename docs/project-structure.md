@@ -57,14 +57,14 @@ UbuntuRemit/
 │   ├── README.md                  ✅ why it's kept, and the rules
 │   ├── stitch-mockups/            ✅ the frozen visual reference — DO NOT EDIT
 │   └── stitch_send_money_wizard.zip  ✅ the original export, intact
-├── services/                      ⬜ one directory per bounded context — all designed, NONE created
-│   ├── gateway/                   ⬜ FastAPI intake, pain.001 parsing, auth
-│   ├── asco/                      ⬜ orchestrator + agents + entry/exit guardrails
-│   ├── inference/                 ⬜ vLLM on ROCm 7.0, both models on one MI300X
-│   ├── messaging/                 ⬜ ISO 20022 build/parse/validate, vendored XSDs — T028 starts here
-│   ├── rails/                     ⬜ Ripple · SWIFT · PAPSS adapters
-│   └── audit/                     ⬜ Kafka asco.audit consumer → append-only store
-└── docker-compose.yml             🔄 Kafka + Postgres real and running; service entries are T063
+├── services/                      ✅ bounded context services (Phase 3-5)
+│   ├── messaging/                 ✅ ISO 20022 message builders/parsers and 3-tier validation (T028-T039)
+│   ├── asco/                      ✅ multi-agent negotiation loop, entry/exit guardrails, orchestrator (T040-T047)
+│   ├── audit/                     ✅ append-only audit store (SQLite/Postgres) & Kafka asco.audit consumer (T050-T051)
+│   └── rails/                     ✅ Ripple, PAPSS, SWIFT adapters & bounded retry router (T052-T055)
+├── tests/                         ✅ workspace integration and hardening suites (Phase 6)
+│   └── hardening/                 ✅ determinism 50x harness, FP8/FP4 benchmarks, concurrent latency
+└── docker-compose.yml             ✅ Kafka 4.3.1 + Postgres 18.4 + messaging/asco/audit/rails service definitions
 ```
 
 ## Untracked process files
@@ -171,18 +171,10 @@ docker compose down    # add -v to discard the volumes
 
 ## Status
 
-Everything under `services/` is **designed but not built** — the diagrams in [design/](design/) are
-complete enough to implement from, and `TASKS.md` Phases 3–5 give the order. The scaffold around
-them is done and verified: the toolchain resolves, the gate runs locally and in CI, and Kafka and
-Postgres come up healthy.
+`libs/domain`, `services/messaging`, `services/asco`, `services/audit`, and `services/rails` **are** built and verified
+under 249 tests spanning property tests, contract validation, state machine exhaustiveness, ISO 20022 schemas,
+multi-agent negotiation loops, append-only immutability triggers, and rail adapters with bounded fallback retries.
+The gate checks 15 verification targets across all 5 packages.
 
-`libs/domain` **is** built (T017) and is the first real code in the repo: the §3 entities, the §4
-state machine, and the §5 enums, under 100 tests covering the three suites §8 asks for — the
-minor-units property, the exhaustive `TransferState × TransferState` matrix, and the contract check
-that no entity carries a field the diagram doesn't draw. It has no runtime dependencies, and it
-should keep none: a dependency added there is one every service inherits.
-
-`apps/web` is real and serves, but is static: the figures on the pages are the mockup's values, and
-the pages load Tailwind, fonts and one image from third-party hosts. T024 self-hosts those
-dependencies; T025 wires the pages to real endpoints once Phase 3 lands. Neither is cosmetic —
-a settlement console that compiles its CSS in the browser from a CDN is not a production artefact.
+`apps/web` is real and serves: the pages load the approved Stitch export. T024 self-hosts external
+dependencies; T027 visual verification of composed wizard steps is pending review.

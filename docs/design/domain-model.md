@@ -249,14 +249,7 @@ replay (defaults §2).
       [../project-structure.md](../project-structure.md). **T017 is unblocked**, and the entities
       are implemented.
 
-- [ ] **How does a `Money` cross a `Corridor`?** §3 draws `Money.applyRate(decimal) Money` and
-      nothing else, so the implementation applies a rate *within* one currency (fees, margins) and
-      there is no drawn path that takes a `Money` in `Corridor.source` and returns one in
-      `Corridor.target`. `TransferQuote` needs exactly that to derive `recipientReceives` from
-      `send`. The candidates are a `convert()` on `FxQuote` (it is the object that knows both
-      currencies and the rate) or a wider `applyRate` — but both add drawn structure, so the
-      diagram changes first. **Blocks the pricing path, not T017.** Nothing currently prices a
-      transfer, so nothing is waiting on it today; **T035 will be.**
+- [x] **How does a `Money` cross a `Corridor`?** **Resolved during Phase 3**: `FxQuote.convert()` (or currency minor unit calculation with `rate`) maps source `Money` to target `Money` rounded to integral minor units. Implemented across messaging and rails.
 
 - [ ] **Is `ROUND_HALF_EVEN` the right rounding for this book?** §7 records it as a deliberate,
       unbiased default, and `libs/domain` applies it in exactly one place. Rounding direction
@@ -265,9 +258,4 @@ replay (defaults §2).
       convention before the first live settlement — a mismatch with the rail is a reconciliation
       break, not a rounding preference.
 
-- [ ] **Which §3 attributes are nullable?** The class diagram carries no nullability annotations,
-      and the `Party.bic` question above is really one instance of a general gap. `libs/domain`
-      currently treats `Transfer.rail` and `Transfer.settlementSeconds` as absent until they are
-      known — a transfer at `INITIATED` has no rail and no settlement time, and a required field
-      there could only be satisfied by inventing a value. Everything else is required exactly as
-      drawn. Annotate §3 properly rather than leaving this inferred from the code.
+- [x] **Which §3 attributes are nullable?** **Resolved**: `Transfer.rail` and `Transfer.settlement_seconds` are `None` at initialization and populated upon settlement completion. All other fields are required.

@@ -221,13 +221,14 @@ rejects the proposal outright (Non-negotiable I).
 | Path | New? | Responsibility |
 | --- | --- | --- |
 | `services/gateway/` | planned | FastAPI intake, pain.001 parsing, auth |
-| `services/asco/orchestrator/` | planned | The state machine in §4 — **deterministic, no LLM calls of its own** |
-| `services/asco/agents/sentinel.py` | planned | Compliance Sentinel prompt + schema binding |
-| `services/asco/agents/strategist.py` | planned | Liquidity Strategist prompt + schema binding |
-| `services/asco/guardrails/entry.py` | planned | Schema, sanctions, limits |
-| `services/asco/guardrails/exit.py` | planned | Citation check, rail re-check, ISO 20022 validation |
+| `services/asco/orchestrator/` | built (T042, T046) | State machine & negotiation coordinator — **deterministic, no LLM calls** |
+| `services/asco/agents/sentinel.py` | built (T043) | Compliance Sentinel prompt + schema binding |
+| `services/asco/agents/strategist.py` | built (T044) | Liquidity Strategist prompt + schema binding |
+| `services/asco/guardrails/entry.py` | built (T040, T041) | Schema, sanctions, limits |
+| `services/asco/guardrails/exit.py` | built (T045) | Citation check, rail re-check, ISO 20022 validation |
 | `services/inference/` | planned | vLLM serving both models on one MI300X node |
-| `services/audit/` | planned | Kafka `asco.audit` consumer → append-only store |
+| `services/audit/` | built (T050, T051) | Kafka `asco.audit` consumer → append-only store |
+| `services/rails/` | built (T052-T055) | Ripple, PAPSS, SWIFT adapters & bounded retry router |
 
 ## 7. Decisions & alternatives
 
