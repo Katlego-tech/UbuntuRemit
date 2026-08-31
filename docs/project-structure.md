@@ -57,14 +57,15 @@ UbuntuRemit/
 │   ├── README.md                  ✅ why it's kept, and the rules
 │   ├── stitch-mockups/            ✅ the frozen visual reference — DO NOT EDIT
 │   └── stitch_send_money_wizard.zip  ✅ the original export, intact
-├── services/                      ✅ bounded context services (Phase 3-5)
+├── services/                      ✅ bounded context services
+│   ├── gateway/                   ✅ FastAPI HTTP intake & client endpoints (/api/fx, /api/transfers, /api/compliance, /api/wallet)
 │   ├── messaging/                 ✅ ISO 20022 message builders/parsers and 3-tier validation (T028-T039)
 │   ├── asco/                      ✅ multi-agent negotiation loop, entry/exit guardrails, orchestrator (T040-T047)
 │   ├── audit/                     ✅ append-only audit store (SQLite/Postgres) & Kafka asco.audit consumer (T050-T051)
 │   └── rails/                     ✅ Ripple, PAPSS, SWIFT adapters & bounded retry router (T052-T055)
 ├── tests/                         ✅ workspace integration and hardening suites (Phase 6)
 │   └── hardening/                 ✅ determinism 50x harness, FP8/FP4 benchmarks, concurrent latency
-└── docker-compose.yml             ✅ Kafka 4.3.1 + Postgres 18.4 + messaging/asco/audit/rails service definitions
+└── docker-compose.yml             ✅ Kafka 4.3.1 + Postgres 18.4 + gateway/messaging/asco/audit/rails service definitions
 ```
 
 ## Untracked process files
