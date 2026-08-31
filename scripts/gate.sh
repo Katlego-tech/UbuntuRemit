@@ -300,7 +300,7 @@ check_iso20022_schemas() {
   fi
 
   # shellcheck disable=SC2086
-  $py_exe -m ubunturemit_messaging.verify_schema $xsd_files || fail=1
+  $py_exe "$root/services/messaging/verify_schema.py" $xsd_files || fail=1
   ran=$((ran + 1))
 }
 

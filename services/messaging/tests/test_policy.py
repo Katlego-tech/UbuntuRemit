@@ -13,8 +13,8 @@ from ubunturemit_messaging.policy import (
 ROOT_POLICY_PATH = Path(__file__).resolve().parent.parent / "schema-policy.yaml"
 
 
-def test_load_default_unpopulated_policy() -> None:
-    """Verifies that the canonical schema-policy.yaml loads cleanly in its unpopulated state."""
+def test_load_canonical_vendored_policy() -> None:
+    """Verifies that the canonical schema-policy.yaml loads cleanly with vendored schemas."""
     matrix = load_schema_policy(ROOT_POLICY_PATH)
 
     assert matrix.conformance_claim == ConformanceClaim.ISO_20022_BASE
@@ -24,12 +24,22 @@ def test_load_default_unpopulated_policy() -> None:
     assert "base" in matrix.contexts
     base_ctx = matrix.contexts["base"]
     assert base_ctx.source == ContextSource.PUBLIC_BASE_CATALOGUE
-    assert base_ctx.retrieved_on is None
-    assert "pain.001.001" in base_ctx.messages
-    assert base_ctx.messages["pain.001.001"].authorized_version is None
-    assert base_ctx.messages["pain.001.001"].sha256 is None
+    assert base_ctx.retrieved_on == "2026-08-31"
 
-    # Clearing contexts (present but empty of messages)
+    # 4 vendored messages
+    assert base_ctx.messages["pain.001.001"].authorized_version == "09"
+    assert base_ctx.messages["pain.001.001"].sha256 is not None
+
+    assert base_ctx.messages["pacs.008.001"].authorized_version == "08"
+    assert base_ctx.messages["pacs.008.001"].sha256 is not None
+
+    assert base_ctx.messages["camt.053.001"].authorized_version == "08"
+    assert base_ctx.messages["camt.053.001"].sha256 is not None
+
+    assert base_ctx.messages["head.001.001"].authorized_version == "02"
+    assert base_ctx.messages["head.001.001"].sha256 is not None
+
+    # Clearing contexts (present but empty of messages until SARB MyStandards export)
     assert "samos" in matrix.contexts
     assert matrix.contexts["samos"].source == ContextSource.SARB_MYSTANDARDS
     assert matrix.contexts["samos"].messages == {}
@@ -37,6 +47,34 @@ def test_load_default_unpopulated_policy() -> None:
     assert "sadc_rtgs" in matrix.contexts
     assert matrix.contexts["sadc_rtgs"].source == ContextSource.SARB_MYSTANDARDS
     assert matrix.contexts["sadc_rtgs"].messages == {}
+
+
+def test_load_unpopulated_policy_fixture(tmp_path: Path) -> None:
+    """Verifies that an unpopulated policy matrix loads cleanly."""
+    policy_file = tmp_path / "unpopulated_policy.yaml"
+    policy_file.write_text(
+        """
+conformance:
+  claim: ISO_20022_BASE
+  notClaimed: SARB_PEM_CONFORMANT
+contexts:
+  base:
+    source: PUBLIC_BASE_CATALOGUE
+    retrievedOn: null
+    messages:
+      pain.001.001: { authorizedVersion: null, sha256: null }
+  samos:
+    source: SARB_MYSTANDARDS
+    messages: {}
+  sadc_rtgs:
+    source: SARB_MYSTANDARDS
+    messages: {}
+""",
+        encoding="utf-8",
+    )
+    matrix = load_schema_policy(policy_file)
+    assert matrix.contexts["base"].retrieved_on is None
+    assert matrix.contexts["base"].messages["pain.001.001"].authorized_version is None
 
 
 def test_reject_nonexistent_policy_file() -> None:
@@ -150,3 +188,13 @@ contexts:
 
     with pytest.raises(PolicyValidationError, match="Invalid conformance claim"):
         load_schema_policy(policy_file)
+
+
+def test_canonical_conformance_boundary_enforced() -> None:
+    """Non-negotiable I: with unpopulated samos/sadc_rtgs, canonical policy MUST NOT claim SARB."""
+    matrix = load_schema_policy(ROOT_POLICY_PATH)
+    assert matrix.conformance_claim == ConformanceClaim.ISO_20022_BASE
+    assert matrix.conformance_not_claimed == "SARB_PEM_CONFORMANT"
+    assert matrix.contexts["base"].source == ContextSource.PUBLIC_BASE_CATALOGUE
+    assert matrix.contexts["samos"].messages == {}
+    assert matrix.contexts["sadc_rtgs"].messages == {}

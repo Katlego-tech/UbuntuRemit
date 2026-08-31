@@ -6,7 +6,14 @@ set -euo pipefail
 root="$(git rev-parse --show-toplevel)"
 staged_xsds="$(git diff --cached --name-only --diff-filter=ACM | grep -E '^services/messaging/schemas/.*\.xsd$' || true)"
 
+py_exe="python3"
+if [ -x "$root/.venv/bin/python" ]; then
+  py_exe="$root/.venv/bin/python"
+elif command -v uv >/dev/null 2>&1; then
+  py_exe="uv run --frozen python"
+fi
+
 if [ -n "$staged_xsds" ]; then
   echo "== pre-commit: verifying staged ISO 20022 schemas =="
-  python3 -m ubunturemit_messaging.verify_schema $staged_xsds
+  $py_exe "$root/services/messaging/verify_schema.py" $staged_xsds
 fi
