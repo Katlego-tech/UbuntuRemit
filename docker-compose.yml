@@ -80,6 +80,46 @@ services:
       retries: 12
       start_period: 10s
 
+  messaging:
+    build:
+      context: .
+      dockerfile: services/messaging/Dockerfile
+    container_name: ubunturemit-messaging
+    depends_on:
+      kafka:
+        condition: service_healthy
+
+  asco:
+    build:
+      context: .
+      dockerfile: services/asco/Dockerfile
+    container_name: ubunturemit-asco
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  audit:
+    build:
+      context: .
+      dockerfile: services/audit/Dockerfile
+    container_name: ubunturemit-audit
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  rails:
+    build:
+      context: .
+      dockerfile: services/rails/Dockerfile
+    container_name: ubunturemit-rails
+    depends_on:
+      kafka:
+        condition: service_healthy
+
 volumes:
   kafka-data:
   postgres-data:

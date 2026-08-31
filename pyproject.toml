@@ -64,5 +64,5 @@ select = [
 addopts = "-q --strict-markers --strict-config"
 # `scripts` is here because the gate has code of its own now (check_markup.py),
 # and a check nobody tests is a check nobody can trust to fail correctly.
-testpaths = ["libs", "services", "scripts"]
+testpaths = ["libs", "services", "scripts", "tests"]
 xfail_strict = true
