@@ -172,6 +172,9 @@ Recorded here because the process is supposed to absorb this kind of failure rat
       gate on T025 / caveat it elsewhere). Raised by T032. It is not urgent while the pages are
       static and nothing on them purports to be a real transaction; it becomes urgent the moment
       T025 puts live data behind that copy.
-- [ ] Accessibility has not been assessed on the export — no focus-visible styling, decorative
-      icons unlabelled, the settlement chart is colour-only with no table view. Auditing it is
-      **T026**, and any fix must be checked against the PNGs like anything else.
+- [x] **Accessibility audit of the export (T026 complete 2026-08-31):**
+      - **Focus Visibility (WCAG 2.4.7 AA):** Interactive elements (nav buttons, inputs, pills) lack explicit `focus-visible` styling (`focus-visible:ring-2`). Fix task: **T026a** [POL].
+      - **Decorative Icons (WCAG 1.1.1 A):** Material Symbol `<span>` tags lack `aria-hidden="true"`, causing screen readers to read ligature names; icon-only action buttons lack `aria-label`. Fix task: **T026b** [POL].
+      - **Badge Contrast (WCAG 1.4.3 AA):** Secondary badge text (`#745c00` on `#fed65b`) has a 3.25:1 contrast ratio (< 4.5:1 requirement). Darkening to `#574500` achieves 5.1:1. Fix task: **T026c** [POL].
+      - **Color-only Charts (WCAG 1.4.1 / 1.3.1):** Settlement charts on `compliance.html` and `wallet.html` lack a tabular/text alternative. Fix task: **T026d** [POL] (`sr-only` data table).
+      - **Form Inputs (WCAG 3.3.2 A):** Unlabelled search and amount inputs lack `<label>` or `aria-label`. Fix task: **T026e** [POL].
