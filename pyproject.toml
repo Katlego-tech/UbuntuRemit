@@ -20,6 +20,8 @@ dev = [
     "ubunturemit-domain",
     "ubunturemit-messaging",
     "ubunturemit-asco",
+    "ubunturemit-audit",
+    "ubunturemit-rails",
 ]
 
 [tool.uv]
@@ -35,6 +37,8 @@ members = ["libs/*", "services/*"]
 ubunturemit-domain = { workspace = true }
 ubunturemit-messaging = { workspace = true }
 ubunturemit-asco = { workspace = true }
+ubunturemit-audit = { workspace = true }
+ubunturemit-rails = { workspace = true }
 
 [tool.ruff]
 target-version = "py313"
