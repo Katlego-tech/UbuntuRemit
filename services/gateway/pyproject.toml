@@ -1,0 +1,26 @@
+# FastAPI Gateway service.
+#
+# Bounded context: API intake and client-facing endpoints.
+# Depends on `libs/domain`, `services/messaging`, `services/asco`, `services/audit`, `services/rails`.
+
+[project]
+name = "ubunturemit-gateway"
+version = "0.0.0"
+description = "FastAPI HTTP Gateway service for UbuntuRemit web client and intake."
+requires-python = "==3.13.*"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn>=0.30.0",
+    "ubunturemit-domain",
+    "ubunturemit-messaging",
+    "ubunturemit-asco",
+    "ubunturemit-audit",
+    "ubunturemit-rails",
+]
+
+[build-system]
+requires = ["hatchling==1.31.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ubunturemit_gateway"]
