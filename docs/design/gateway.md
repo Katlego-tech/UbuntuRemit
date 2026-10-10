@@ -33,6 +33,7 @@ classDiagram
         +LLMClient? strategist_client
         +SanctionsScreener? sanctions_screener
         +RailRouter? rail_router
+        +AuditLogger? audit_logger
         +missing() list~str~
     }
     class QuoteSource {
@@ -66,9 +67,10 @@ classDiagram
 ```
 
 `create_app(dependencies)` stores one `GatewayDependencies` on `app.state`, beside a fresh
-`GatewayRuntime` (orchestrator, audit logger, and the responses already given) — nothing is
-shared between app instances. **There is no production implementation of any of the five yet**,
-so the module-level `app` answers 503 on every
+`GatewayRuntime` (the orchestrator and the responses already given) — nothing is
+shared between app instances. **Only the audit logger has a production implementation
+(`ubunturemit_audit.KafkaAuditLogger`, T050a); the other five do not exist yet**, so the
+module-level `app` answers 503 on every
 endpoint that needs one. That is the correct behaviour today, not a gap to paper over:
 
 | Source | What would provide it | Until then |
@@ -76,6 +78,7 @@ endpoint that needs one. That is the correct behaviour today, not a gap to paper
 | `quote_source` | a live FX rate provider | `GET /api/fx/quote`, `POST /api/transfers` → 503 |
 | `sentinel_client`, `strategist_client` | `services/inference` — vLLM on the MI300X ([asco-orchestrator.md](asco-orchestrator.md) §3, *planned*) | `POST /api/transfers` → 503 |
 | `sanctions_screener` | a published list (e.g. the UN consolidated list) loaded with its own date | `POST /api/transfers` → 503 |
+| `audit_logger` | `ubunturemit_audit.KafkaAuditLogger` — waits for the broker's ack, raises otherwise (T050a) | `POST /api/transfers` → 503 |
 | `rail_router` | a `RailRouter` over real Ripple / PAPSS / SWIFT adapters — T052–T054, blocked on sandbox credentials | `GET /api/fx/quote`, `POST /api/transfers` → 503 |
 
 The `rails` package ships **no adapter** until T052–T054 land. The only simulator lives in the

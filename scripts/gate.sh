@@ -518,6 +518,45 @@ check_iso20022_schemas() {
   $(py_script_runner) "$root/services/messaging/verify_schema.py" "${xsd_files[@]}" || fail=1
   ran=$((ran + 1))
 }
+# ------------------------------------------- integration tests (T050a) ------
+# testing-strategy.md: integration tests run against a real broker and a real
+# database, never mocks. The suites marked `integration` need the compose Kafka and
+# Postgres, so this check starts both (and waits for their healthchecks) before running
+# them. No Docker means the check cannot run -- which, by the skip rule, is a failure.
+check_integration() {
+  [ -f "$root/docker-compose.yml" ] || return 0
+
+  if [ "$list_only" -eq 1 ]; then say "-> would run: integration tests (compose Postgres + Kafka)"; return 0; fi
+
+  step "integration tests (compose Postgres + Kafka)"
+  if ! docker compose version >/dev/null 2>&1; then
+    bad "   docker compose is not available, so the integration tests cannot run."
+    bad "   Install Docker with the compose plugin -- a check that did not run is a failed check."
+    fail=1
+    return 0
+  fi
+  if ! ( cd "$root" && docker compose up -d --wait kafka postgres ); then
+    bad "   the compose Kafka/Postgres did not become healthy; the integration tests cannot run."
+    fail=1
+    return 0
+  fi
+  if ! resolve_python "$root"; then
+    bad "   no usable Python interpreter, so the integration tests could not run."
+    fail=1
+    return 0
+  fi
+
+  local rc
+  pyrun "$root" pytest -m integration
+  rc=$?
+  ran=$((ran + 1))
+  if [ "$rc" -eq 5 ]; then
+    bad "   no integration tests were collected -- the check ran nothing."
+    fail=1
+  elif [ "$rc" -ne 0 ]; then
+    fail=1
+  fi
+}
 # ================================================= end UbuntuRemit (project) ===
 
 # ------------------------------------------------------------ file lists ----
@@ -921,7 +960,7 @@ fi
 # "nothing was executed".
 if [ "$list_only" -eq 1 ]; then
   say ""
-  check_web_links; check_web_markup; check_iso20022_schemas   # UbuntuRemit (project)
+  check_web_links; check_web_markup; check_iso20022_schemas; check_integration   # UbuntuRemit (project)
   say "-> would run: placeholder sweep, secret sweep"
   php_count="$(php_files | grep -c . || true)"
   [ "$php_count" -gt 0 ] && say "-> would run: php -l on $php_count PHP file(s)"
@@ -939,6 +978,7 @@ fi
 check_web_links          # UbuntuRemit (project)
 check_web_markup         # UbuntuRemit (project)
 check_iso20022_schemas   # UbuntuRemit (project)
+check_integration        # UbuntuRemit (project)
 placeholder_sweep
 secret_sweep
 php_lint

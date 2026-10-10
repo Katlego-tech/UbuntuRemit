@@ -63,7 +63,7 @@ UbuntuRemit/
 │   ├── gateway/                   ✅ FastAPI HTTP intake (/api/fx, /api/transfers, /api/compliance) — docs/design/gateway.md
 │   ├── messaging/                 ✅ ISO 20022 message builders/parsers and 3-tier validation (T028-T039)
 │   ├── asco/                      ✅ multi-agent negotiation loop, entry/exit guardrails, orchestrator (T040-T047)
-│   ├── audit/                     ✅ append-only audit store (SQLite/Postgres) & Kafka asco.audit consumer (T050-T051)
+│   ├── audit/                     ✅ append-only Postgres store (writer role: SELECT+INSERT only) fed over Kafka asco.audit (T050-T051, T050a)
 │   └── rails/                     🔄 bounded retry router (T055); Ripple/PAPSS/SWIFT adapters blocked (T052-T054)
 ├── tests/                         ✅ workspace integration and hardening suites (Phase 6)
 │   └── hardening/                 ✅ determinism 50x harness, FP8/FP4 benchmarks, concurrent latency

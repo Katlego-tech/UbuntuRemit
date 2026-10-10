@@ -54,6 +54,7 @@ def test_transfer_without_sources_is_refused_and_names_them() -> None:
         "strategist_client",
         "sanctions_screener",
         "rail_router",
+        "audit_logger",
     ):
         assert name in detail
 

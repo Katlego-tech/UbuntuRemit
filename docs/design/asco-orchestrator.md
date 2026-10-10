@@ -230,7 +230,7 @@ Every field marked required above is read without a default: a missing one is ma
 | `services/asco/guardrails/entry.py` | built (T040, T041) | Schema, sanctions, limits |
 | `services/asco/guardrails/exit.py` | built (T045) | Citation check, rail re-check, ISO 20022 validation |
 | `services/inference/` | planned | vLLM serving both models on one MI300X node |
-| `services/audit/` | built (T050, T051) | Kafka `asco.audit` consumer → append-only store |
+| `services/audit/` | built (T050, T051, T050a) | `KafkaAuditLogger` (acks=all, fails closed) → `asco.audit` → `KafkaAuditConsumer` → Postgres, writer role holds SELECT + INSERT only; triggers as the second wall. The production topic's retention is a SARB PEM figure not yet sourced — **T050b** |
 | `services/rails/` | router built (T055); adapters **blocked** (T052-T054, sandbox credentials) | Bounded-retry router over injected adapters; no adapter ships yet |
 
 ## 7. Decisions & alternatives
