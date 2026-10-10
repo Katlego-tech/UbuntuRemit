@@ -38,7 +38,6 @@ from ubunturemit_gateway.dependencies import (
 )
 from ubunturemit_gateway.models import TransferInitiationRequest, TransferResponse
 from ubunturemit_messaging import build_pacs008, build_pain001
-from ubunturemit_rails import RailRouter
 
 router = APIRouter(prefix="/api/transfers", tags=["Transfers"])
 
@@ -53,11 +52,13 @@ def initiate_transfer(
     # assessed by real sources, or refused -- never part-way on a stand-in.
     quote_source, screener = deps.quote_source, deps.sanctions_screener
     sentinel_client, strategist_client = deps.sentinel_client, deps.strategist_client
+    rail_router = deps.rail_router
     if (
         quote_source is None
         or screener is None
         or sentinel_client is None
         or strategist_client is None
+        or rail_router is None
     ):
         raise not_configured(*deps.missing())
 
@@ -140,7 +141,6 @@ def initiate_transfer(
         )
 
     # 2. Multi-agent negotiation loop
-    rail_router = RailRouter()
     rail_quotes = rail_router.get_quotes(corridor, send_money)
 
     coordinator = NegotiationCoordinator(

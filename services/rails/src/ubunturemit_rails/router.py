@@ -3,6 +3,7 @@ Docs: domain-model.md §4 & TASKS.md T055.
 """
 
 import dataclasses
+from collections.abc import Mapping
 
 from ubunturemit_asco.models import RailQuote
 from ubunturemit_asco.orchestrator.master import MasterOrchestrator, RetryBudgetExceededError
@@ -15,9 +16,6 @@ from ubunturemit_domain import (
 )
 
 from ubunturemit_rails.base import RailAdapter, RailStatus, RailSubmissionResult
-from ubunturemit_rails.papss import PapssRailAdapter
-from ubunturemit_rails.ripple import RippleRailAdapter
-from ubunturemit_rails.swift import SwiftRailAdapter
 
 
 class SettlementExhaustionError(Exception):
@@ -27,15 +25,12 @@ class SettlementExhaustionError(Exception):
 class RailRouter:
     """Routes settlements across registered rail adapters and manages bounded retries on failure."""
 
-    def __init__(self, adapters: dict[SettlementRail, RailAdapter] | None = None) -> None:
-        if adapters is not None:
-            self._adapters = dict(adapters)
-        else:
-            self._adapters = {
-                SettlementRail.RIPPLE: RippleRailAdapter(),
-                SettlementRail.PAPSS: PapssRailAdapter(),
-                SettlementRail.SWIFT: SwiftRailAdapter(),
-            }
+    def __init__(self, adapters: Mapping[SettlementRail, RailAdapter]) -> None:
+        # No defaults: the adapters a router used to build for itself returned invented
+        # quotes and invented settlement confirmations (T052-T054).
+        if not adapters:
+            raise ValueError("RailRouter needs at least one rail adapter.")
+        self._adapters = dict(adapters)
 
     def get_quotes(self, corridor: Corridor, amount: Money) -> list[RailQuote]:
         """Collect live quotes from all eligible rail adapters."""

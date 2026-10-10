@@ -11,7 +11,6 @@ from ubunturemit_gateway.dependencies import (
     not_configured,
 )
 from ubunturemit_gateway.models import QuoteResponse
-from ubunturemit_rails import RailRouter
 
 router = APIRouter(prefix="/api/fx", tags=["Quotes"])
 
@@ -29,16 +28,19 @@ def get_quote(
     except ValueError as err:
         raise HTTPException(status_code=400, detail=f"Unsupported currency: {err}") from err
 
-    if deps.quote_source is None:
-        raise not_configured("quote_source")
+    quote_source, rail_router = deps.quote_source, deps.rail_router
+    if quote_source is None or rail_router is None:
+        raise not_configured(
+            *[name for name in ("quote_source", "rail_router") if name in deps.missing()]
+        )
 
     send_money = Money(minor_units=amount, currency=src_code)
     try:
-        quote = deps.quote_source.quote(src_code, tgt_code, send_money)
+        quote = quote_source.quote(src_code, tgt_code, send_money)
     except UnsupportedCorridorError as err:
         raise HTTPException(status_code=404, detail=str(err)) from err
 
-    rail_quotes = RailRouter().get_quotes(quote.fx.corridor, send_money)
+    rail_quotes = rail_router.get_quotes(quote.fx.corridor, send_money)
     if not rail_quotes:
         raise HTTPException(status_code=503, detail="No rail quotes available for this corridor.")
 

@@ -10,6 +10,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
+from simulated_rails import SimulatedRail
 from ubunturemit_asco.orchestrator.master import MasterOrchestrator
 from ubunturemit_domain import (
     ComplianceDeclaration,
@@ -29,10 +30,7 @@ from ubunturemit_domain import (
     TransferState,
 )
 from ubunturemit_messaging.pacs008 import build_pacs008
-from ubunturemit_rails.papss import PapssRailAdapter
-from ubunturemit_rails.ripple import RippleRailAdapter
 from ubunturemit_rails.router import RailRouter, SettlementExhaustionError
-from ubunturemit_rails.swift import SwiftRailAdapter
 
 
 @pytest.fixture
@@ -73,9 +71,9 @@ def transfer() -> Transfer:
 def test_retry_fallback_to_second_rail(transfer: Transfer) -> None:
     """When primary rail fails, fallback to second rail succeeds within retry budget."""
     adapters = {
-        SettlementRail.RIPPLE: RippleRailAdapter(simulate_failure=True),
-        SettlementRail.PAPSS: PapssRailAdapter(simulate_failure=False),
-        SettlementRail.SWIFT: SwiftRailAdapter(simulate_failure=False),
+        SettlementRail.RIPPLE: SimulatedRail(SettlementRail.RIPPLE, fail=True),
+        SettlementRail.PAPSS: SimulatedRail(SettlementRail.PAPSS, fail=False),
+        SettlementRail.SWIFT: SimulatedRail(SettlementRail.SWIFT, fail=False),
     }
     router = RailRouter(adapters=adapters)
     orchestrator = MasterOrchestrator()
@@ -101,9 +99,9 @@ def test_retry_exhaustion_when_all_rails_fail(transfer: Transfer) -> None:
     Raises SettlementExhaustionError.
     """
     adapters = {
-        SettlementRail.RIPPLE: RippleRailAdapter(simulate_failure=True),
-        SettlementRail.PAPSS: PapssRailAdapter(simulate_failure=True),
-        SettlementRail.SWIFT: SwiftRailAdapter(simulate_failure=True),
+        SettlementRail.RIPPLE: SimulatedRail(SettlementRail.RIPPLE, fail=True),
+        SettlementRail.PAPSS: SimulatedRail(SettlementRail.PAPSS, fail=True),
+        SettlementRail.SWIFT: SimulatedRail(SettlementRail.SWIFT, fail=True),
     }
     router = RailRouter(adapters=adapters)
     orchestrator = MasterOrchestrator()
@@ -119,3 +117,8 @@ def test_retry_exhaustion_when_all_rails_fail(transfer: Transfer) -> None:
 
     # Retry count reached 2
     assert orchestrator.get_retry_count(transfer.id) == 2
+
+
+def test_router_refuses_to_build_without_adapters() -> None:
+    with pytest.raises(ValueError, match="at least one"):
+        RailRouter(adapters={})

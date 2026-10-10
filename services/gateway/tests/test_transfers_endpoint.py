@@ -41,7 +41,13 @@ def test_transfer_without_sources_is_refused_and_names_them() -> None:
     resp = unconfigured.post("/api/transfers", json=_payload())
     assert resp.status_code == 503
     detail = resp.json()["detail"]
-    for name in ("quote_source", "sentinel_client", "strategist_client", "sanctions_screener"):
+    for name in (
+        "quote_source",
+        "sentinel_client",
+        "strategist_client",
+        "sanctions_screener",
+        "rail_router",
+    ):
         assert name in detail
 
 

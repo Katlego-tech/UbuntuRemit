@@ -17,6 +17,7 @@ from ubunturemit_asco import (
     SanctionsScreener,
 )
 from ubunturemit_domain import CurrencyCode, Money, TransferQuote
+from ubunturemit_rails import RailRouter
 
 from ubunturemit_gateway.models import TransferResponse
 
@@ -41,6 +42,7 @@ class GatewayDependencies:
     sentinel_client: LLMClient | None = None
     strategist_client: LLMClient | None = None
     sanctions_screener: SanctionsScreener | None = None
+    rail_router: RailRouter | None = None
 
     def missing(self) -> list[str]:
         """Names of the sources not configured, in a stable order."""
@@ -49,6 +51,7 @@ class GatewayDependencies:
             "sentinel_client": self.sentinel_client,
             "strategist_client": self.strategist_client,
             "sanctions_screener": self.sanctions_screener,
+            "rail_router": self.rail_router,
         }
         return [name for name, value in names.items() if value is None]
 
