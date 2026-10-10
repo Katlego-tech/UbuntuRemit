@@ -234,3 +234,26 @@ def test_negotiation_kafka_unavailable_refuses_transfer(
             assessment_input=assessment_input,
             rail_quotes=quotes,
         )
+
+
+def test_negotiation_strategist_timeout_fails_closed(
+    transfer_and_assessment: tuple[Transfer, ComplianceAssessmentInput, list[RailQuote]],
+) -> None:
+    """A Strategist inference timeout escalates like the Sentinel's -- never a 500, never settle."""
+    transfer, assessment_input, quotes = transfer_and_assessment
+    audit_logger = InMemoryAuditLogger()
+    coordinator = NegotiationCoordinator(
+        compliance_sentinel=_passing_sentinel(),
+        liquidity_strategist=LiquidityStrategist(
+            llm_client=MockLLMClient([InferenceTimeoutError("vLLM timeout")])
+        ),
+        audit_logger=audit_logger,
+    )
+
+    result = coordinator.negotiate_and_settle(
+        transfer=transfer, assessment_input=assessment_input, rail_quotes=quotes
+    )
+
+    assert result.outcome == "PENDING_REVIEW"
+    assert result.proposal is None
+    assert any(r.deterministic_override for r in audit_logger.records)

@@ -1,6 +1,6 @@
 """Liquidity Strategist agent -- docs/design/asco-orchestrator.md §3, §5.
 
-32B math-optimised model persona finding cheapest/fastest settlement rail.
+Model persona finding the cheapest/fastest settlement rail.
 Selects exclusively from provided RailQuotes.
 """
 
@@ -95,7 +95,7 @@ class LiquidityStrategist:
             f"Selecting optimal rail from {len(eligible_quotes)} eligible quotes "
             f"for transfer {request_input.transfer_id}"
         )
-        action = f"Prompting 32B Liquidity Strategist with payload: {payload_json}"
+        action = f"Prompting Liquidity Strategist with payload: {payload_json}"
 
         try:
             raw_response = self._client.complete(
@@ -124,20 +124,21 @@ class LiquidityStrategist:
         request_input: LiquidityRequestInput,
     ) -> LiquidityProposal:
         data = json.loads(json_str)
-        rail_str = data.get("rail", "")
+        # Required fields have no defaults (asco-orchestrator.md §5): a missing cost or
+        # latency raises and takes the retry path, never becomes 0 or 10 seconds.
+        rail_str = data["rail"]
         if rail_str not in SettlementRail._value2member_map_:
             raise ValueError(f"Unknown rail '{rail_str}'")
         rail = SettlementRail(rail_str)
 
-        cost_data = data.get("totalCost", {})
-        cost_minor = int(cost_data.get("minorUnits", 0))
+        cost_minor = int(data["totalCost"]["minorUnits"])
         total_cost = Money(
             minor_units=cost_minor,
             currency=request_input.amount.currency,
         )
 
-        est_sec = Decimal(str(data.get("estimatedSeconds", "10.0")))
-        rationale = data.get("rationale", "")
+        est_sec = Decimal(str(data["estimatedSeconds"]))
+        rationale = data["rationale"]
 
         return LiquidityProposal(
             rail=rail,

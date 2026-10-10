@@ -58,7 +58,9 @@ classDiagram
     SanctionsScreener --> SanctionsListSource
 ```
 
-`create_app(dependencies)` stores one `GatewayDependencies` on `app.state`. **There is no
+`create_app(dependencies)` stores one `GatewayDependencies` on `app.state`, beside a fresh
+`GatewayRuntime` (orchestrator, audit logger, and the responses already given) — nothing is
+shared between app instances. **There is no
 production implementation of any of the four yet**, so the module-level `app` answers 503 on every
 endpoint that needs one. That is the correct behaviour today, not a gap to paper over:
 
@@ -100,17 +102,22 @@ sequenceDiagram
 
 - **Every source is checked before any work.** A transfer is either priced, screened and assessed by
   real sources, or refused with 503 naming each missing one.
-- **Compliance inputs come from the caller.** `sender_prior_transfers_30d_count`,
+- **Compliance inputs come from the caller.** `sender_kyc_tier` (exactly `L1`/`L2`/`L3` — never
+  coerced, since it selects the single-transfer limit), `sender_prior_transfers_30d_count`,
   `sender_prior_transfers_30d_minor_units` and `recipient_account_age_days` are required request
   fields: the gateway has no transfer history or account register, and a default would be a
   fabricated fact fed to the velocity and account-age checks.
 - **`cited_rules` in a response is the verdict's own** (`NegotiationResult.verdict.cited_rules`), or
-  the entry gate's on a rejection — never a list written in the route.
+  the entry gate's on a rejection — never a list written in the route. An entry-gate rejection
+  moves the transfer to `REJECTED`. `GET /api/transfers/{id}` returns the stored response the
+  POST answered with, citations included.
+- **A Strategist that times out or produces no valid proposal escalates** (`PENDING_REVIEW`,
+  audited with `deterministicOverride`), as the Sentinel does — never a 500, never a settlement.
 - **`GET /api/compliance/health`** reports the wiring, nothing more: `status` is `OPERATIONAL` only
   when `missing_dependencies` is empty; `rules_enforced` is `ENTRY_GATE_RULES` from the entry
   guardrail; `sanctions_list` is the loaded list's citation or `null`; `rejection_rate_24h` and
-  `total_screened_24h` are `null` until a persistent screening history exists (T050a). It names no
-  hardware and no model size.
+  `total_screened_24h` are `null` until a persistent screening history exists (T050a); `audit_log`
+  names the audit sink type in use. It names no hardware and no model size.
 - **Removed:** `GET /api/wallet` and `GET /api/session` returned a real bank's name with invented
   balances and settlements. They come back when a ledger and an identity source exist — **T074**.
 

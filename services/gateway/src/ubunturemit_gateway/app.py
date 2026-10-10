@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from ubunturemit_gateway.dependencies import GatewayDependencies
+from ubunturemit_gateway.dependencies import GatewayDependencies, GatewayRuntime
 from ubunturemit_gateway.routes.compliance import router as compliance_router
 from ubunturemit_gateway.routes.quotes import router as quotes_router
 from ubunturemit_gateway.routes.transfers import router as transfers_router
@@ -29,6 +29,7 @@ def create_app(dependencies: GatewayDependencies | None = None) -> FastAPI:
     )
 
     app.state.dependencies = dependencies or GatewayDependencies()
+    app.state.runtime = GatewayRuntime()
 
     app.include_router(quotes_router)
     app.include_router(transfers_router)

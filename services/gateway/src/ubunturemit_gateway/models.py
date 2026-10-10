@@ -1,6 +1,7 @@
 """Data transfer schemas for the gateway -- docs/design/gateway.md §5."""
 
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -31,7 +32,9 @@ class TransferInitiationRequest(BaseModel):
     sender_bic: str
     sender_country: str
     sender_national_id: str
-    sender_kyc_tier: str = "TIER_3"
+    # The entry gate's KYC tiers. Required: a defaulted or coerced tier is an invented
+    # KYC fact, and it would choose the single-transfer limit the gate applies.
+    sender_kyc_tier: Literal["L1", "L2", "L3"]
     sender_is_pep: bool = False
     recipient_name: str
     recipient_account: str

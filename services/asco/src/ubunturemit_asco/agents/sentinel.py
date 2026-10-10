@@ -1,6 +1,6 @@
 """Compliance Sentinel agent -- docs/design/asco-orchestrator.md §3, §5.
 
-70B reasoning model persona enforcing AML/CFT, FICA, and SARB EXCON regulations.
+Reasoning-model persona enforcing AML/CFT, FICA, and SARB EXCON regulations.
 Emits schema-bound ComplianceVerdict with mandatory citedRules.
 """
 
@@ -115,7 +115,7 @@ class ComplianceSentinel:
             f"Evaluating compliance for transfer {assessment_input.transfer_id} "
             f"on corridor {corridor_desc}"
         )
-        action = f"Prompting 70B Compliance Sentinel with payload: {payload_json}"
+        action = f"Prompting Compliance Sentinel with payload: {payload_json}"
 
         # First attempt
         try:
@@ -167,11 +167,13 @@ class ComplianceSentinel:
 
     def _parse_and_validate(self, json_str: str) -> ComplianceVerdict:
         data = json.loads(json_str)
-        outcome_str = data.get("outcome", "ESCALATE")
-        outcome = VerdictOutcome(outcome_str)
-        risk_score = Decimal(str(data.get("riskScore", "0.0")))
-        cited_rules = data.get("citedRules", [])
-        rationale = data.get("rationale", "")
+        # Every field the §5 contract marks required is read without a default: a missing
+        # one raises, which takes the re-ask path and then ESCALATE. A defaulted riskScore
+        # would read as "zero risk" on a verdict that never stated one.
+        outcome = VerdictOutcome(data["outcome"])
+        risk_score = Decimal(str(data["riskScore"]))
+        cited_rules = data["citedRules"]
+        rationale = data["rationale"]
 
         constraints_data = data.get("constraints", {})
         forbidden_rails = [

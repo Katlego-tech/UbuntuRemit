@@ -76,3 +76,14 @@ def test_liquidity_strategist_without_inference_backend_refuses() -> None:
     """No model attached -> no Strategist. It never synthesises a proposal (Non-negotiable I)."""
     with pytest.raises(InferenceBackendMissingError):
         LiquidityStrategist(llm_client=None)  # type: ignore[arg-type]
+
+
+def test_liquidity_strategist_missing_cost_is_never_defaulted(
+    sample_request: LiquidityRequestInput,
+) -> None:
+    """A proposal with no totalCost is re-asked once, then raises -- never becomes cost 0."""
+    no_cost = json.dumps({"rail": "RIPPLE", "estimatedSeconds": 3.2, "rationale": "Cheapest rail."})
+    strategist = LiquidityStrategist(llm_client=MockLLMClient([no_cost, no_cost]))
+
+    with pytest.raises(KeyError):
+        strategist.propose(sample_request)

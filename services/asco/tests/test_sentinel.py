@@ -127,3 +127,17 @@ def test_sentinel_without_inference_backend_refuses() -> None:
     """No model attached -> no Sentinel. It never synthesises a verdict (Non-negotiable I)."""
     with pytest.raises(InferenceBackendMissingError):
         ComplianceSentinel(llm_client=None)  # type: ignore[arg-type]
+
+
+def test_sentinel_verdict_missing_risk_score_escalates(
+    sample_input: ComplianceAssessmentInput,
+) -> None:
+    """A PASS with no stated riskScore is not read as zero risk: re-asked, then ESCALATE."""
+    no_score = json.dumps(
+        {"outcome": "PASS", "citedRules": ["FICA s21"], "rationale": "No score given."}
+    )
+    sentinel = ComplianceSentinel(llm_client=MockLLMClient([no_score, no_score]))
+
+    verdict, _, _ = sentinel.assess(sample_input)
+
+    assert verdict.outcome == VerdictOutcome.ESCALATE

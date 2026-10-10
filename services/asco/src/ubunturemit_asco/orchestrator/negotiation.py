@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Protocol
 
-from ubunturemit_asco.agents.sentinel import ComplianceSentinel
+from ubunturemit_asco.agents.sentinel import ComplianceSentinel, InferenceTimeoutError
 from ubunturemit_asco.agents.strategist import LiquidityStrategist
 from ubunturemit_asco.guardrails.exit import ExitValidator
 from ubunturemit_asco.models import (
@@ -180,7 +180,25 @@ class NegotiationCoordinator:
                 rail_quotes=rail_quotes,
                 constraints=active_constraints,
             )
-            proposal, ls_thought, ls_action = self._ls.propose(req_input)
+            try:
+                proposal, ls_thought, ls_action = self._ls.propose(req_input)
+            except (InferenceTimeoutError, ValueError, KeyError) as err:
+                # Fail closed, as the Sentinel does: a Strategist that timed out, or
+                # could not produce a valid proposal from the rails offered, escalates.
+                _record(
+                    actor="orchestrator",
+                    thought="Liquidity Strategist produced no valid proposal",
+                    action="Escalate to human review",
+                    observation=f"{type(err).__name__}: {err}",
+                    override=True,
+                )
+                return NegotiationResult(
+                    verdict=verdict,
+                    transfer=current_transfer,
+                    outcome="PENDING_REVIEW",
+                    audit_records=audit_trail,
+                    reason=f"Liquidity Strategist failed ({type(err).__name__}). Escalating.",
+                )
             ls_obs = (
                 f"Proposed rail: {proposal.rail}, cost: {proposal.total_cost.minor_units}, "
                 f"estSec: {proposal.estimated_seconds}"
