@@ -524,7 +524,13 @@ check_iso20022_schemas() {
 # Postgres, so this check starts both (and waits for their healthchecks) before running
 # them. No Docker means the check cannot run -- which, by the skip rule, is a failure.
 check_integration() {
-  [ -f "$root/docker-compose.yml" ] || return 0
+  # Stack left running afterwards on purpose: the next push reuses it rather than paying
+  # the start-up again. `docker compose down` stops it; its volumes hold only test rows.
+  if [ ! -f "$root/docker-compose.yml" ]; then
+    bad "docker-compose.yml is missing, so the integration tests have nothing to run against."
+    fail=1
+    return 0
+  fi
 
   if [ "$list_only" -eq 1 ]; then say "-> would run: integration tests (compose Postgres + Kafka)"; return 0; fi
 

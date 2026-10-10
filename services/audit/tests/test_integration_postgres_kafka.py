@@ -20,6 +20,7 @@ from psycopg import errors as pg_errors
 from ubunturemit_asco.models import AuditRecord
 from ubunturemit_audit import (
     AuditLogUnavailableError,
+    AuditPositionConflictError,
     KafkaAuditConsumer,
     KafkaAuditLogger,
     LogPosition,
@@ -156,3 +157,14 @@ def test_logger_fails_closed_when_the_broker_is_unreachable() -> None:
     )
     with pytest.raises(AuditLogUnavailableError):
         logger.log_record(_record("TR-INT-UNREACHABLE"))
+
+
+def test_a_different_record_at_a_taken_position_is_never_dropped(
+    store: PostgresAuditStore,
+) -> None:
+    """A recreated topic reuses offsets; a new record there must raise, not vanish."""
+    t_id = f"TR-INT-{uuid.uuid4().hex[:8]}"
+    position = LogPosition(topic=f"recreated-{t_id}", partition=0, offset=0)
+    store.append_from_log(_record(t_id, actor="orchestrator"), position)
+    with pytest.raises(AuditPositionConflictError):
+        store.append_from_log(_record(t_id, actor="exit_validator"), position)

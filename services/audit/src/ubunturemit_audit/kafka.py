@@ -24,6 +24,15 @@ class AuditLogUnavailableError(ConnectionError):
     """The broker did not acknowledge an audit record."""
 
 
+class MalformedAuditMessageError(ValueError):
+    """A message on the audit topic is not a valid AuditRecord.
+
+    Its offset is never committed, so the consumer stops at it rather than skipping an
+    audit record. There is deliberately no dead-letter path: an operator decides what an
+    unreadable audit record means.
+    """
+
+
 def serialize_audit_record(record: AuditRecord) -> bytes:
     return json.dumps(dataclasses.asdict(record)).encode("utf-8")
 
@@ -39,7 +48,17 @@ class KafkaAuditLogger:
     ) -> None:
         # acks=all + idempotence: a record is acknowledged only once every in-sync
         # replica has it, and a retried send is never written twice.
-        self._producer = Producer({"acks": "all", "enable.idempotence": True, **config})
+        # message.timeout.ms is pinned to the delivery timeout, after the caller's config:
+        # left at librdkafka's 300 s default, a record this call reported as undelivered
+        # could still reach the broker later, for a transfer that was already refused.
+        self._producer = Producer(
+            {
+                "acks": "all",
+                "enable.idempotence": True,
+                **config,
+                "message.timeout.ms": int(delivery_timeout_s * 1000),
+            }
+        )
         self._topic = topic
         self._timeout = delivery_timeout_s
 
@@ -93,7 +112,12 @@ class KafkaAuditConsumer:
         topic, partition, offset = msg.topic(), msg.partition(), msg.offset()
         if value is None or topic is None or partition is None or offset is None:
             raise KafkaException(f"Malformed audit message at {topic}/{partition}/{offset}")
-        record = parse_audit_record(value)
+        try:
+            record = parse_audit_record(value)
+        except (ValueError, KeyError, TypeError) as err:
+            raise MalformedAuditMessageError(
+                f"Unreadable audit message at {topic}/{partition}/{offset}: {err}"
+            ) from err
         self._store.append_from_log(record, LogPosition(topic, partition, offset))
         # Commit only after the row is durable: a crash in between redelivers the
         # message, and its position makes the second insert a no-op.

@@ -11,6 +11,15 @@ class OverPrivilegedAuditStoreError(RuntimeError):
     """The store's database role can change or remove audit records, so it refuses to run."""
 
 
+class AuditPositionConflictError(RuntimeError):
+    """A different record already sits at this bus position.
+
+    Positions repeat when a topic is recreated or a cluster rebuilt. Treating the
+    collision as a redelivery would drop a real audit record without a trace, so it is
+    raised instead and the consumer stops on it.
+    """
+
+
 @dataclass(frozen=True, slots=True)
 class LogPosition:
     """A record's position on the bus: what makes a redelivery recognisable."""
@@ -73,7 +82,36 @@ class PostgresAuditStore:
                 position.offset if position else None,
             ),
         )
-        return cursor.rowcount == 1
+        if cursor.rowcount == 1:
+            return True
+        # Nothing inserted: the position is taken. Only an identical record makes this a
+        # redelivery; anything else is a different record that must not be dropped.
+        if position is None:  # a NULL position never conflicts, so this cannot be a duplicate
+            raise RuntimeError("Audit insert without a bus position inserted nothing.")
+        stored = self._conn.execute(
+            """
+            SELECT transfer_id, actor, thought, action, observation, recorded_at,
+                   deterministic_override
+            FROM audit_records
+            WHERE source_topic = %s AND source_partition = %s AND source_offset = %s
+            """,
+            (position.topic, position.partition, position.offset),
+        ).fetchone()
+        incoming = (
+            str(record.transfer_id),
+            record.actor,
+            record.thought,
+            record.action,
+            record.observation,
+            record.recorded_at,
+            record.deterministic_override,
+        )
+        if stored is None or tuple(stored) != incoming:
+            raise AuditPositionConflictError(
+                f"{position} already holds a different audit record; refusing to drop "
+                f"the incoming one for transfer {record.transfer_id}."
+            )
+        return False
 
     def get_records(self, transfer_id: TransferId) -> list[AuditRecord]:
         rows = self._conn.execute(

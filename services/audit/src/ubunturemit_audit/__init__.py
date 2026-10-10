@@ -6,9 +6,11 @@ from ubunturemit_audit.kafka import (
     AuditLogUnavailableError,
     KafkaAuditConsumer,
     KafkaAuditLogger,
+    MalformedAuditMessageError,
     serialize_audit_record,
 )
 from ubunturemit_audit.postgres_store import (
+    AuditPositionConflictError,
     LogPosition,
     OverPrivilegedAuditStoreError,
     PostgresAuditStore,
@@ -25,6 +27,8 @@ from ubunturemit_audit.verifier import verify_audit_completeness
 __all__ = [
     "AUDIT_TOPIC",
     "AuditLogUnavailableError",
+    "AuditPositionConflictError",
+    "MalformedAuditMessageError",
     "KafkaAuditConsumer",
     "KafkaAuditLogger",
     "LogPosition",
