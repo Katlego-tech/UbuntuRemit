@@ -66,13 +66,16 @@ class SimulatedTestRail:
 
     rail = SettlementRail.PAPSS
 
+    def __init__(self, fail: bool = False) -> None:
+        self._fail = fail
+
     def get_quote(self, corridor: Corridor, amount: Money) -> RailQuote:
         return RailQuote(self.rail, 1200, 8, Decimal("11"))
 
     def submit_settlement(self, pacs008_xml: str, transfer: Transfer) -> RailSubmissionResult:
         return RailSubmissionResult(
             rail=self.rail,
-            status=RailStatus.DELIVERED,
+            status=RailStatus.FAILED if self._fail else RailStatus.DELIVERED,
             settlement_reference="SIMULATED-TEST",
             fee=Money(minor_units=1200, currency=transfer.quote.send.currency),
             settlement_seconds=Decimal("11"),

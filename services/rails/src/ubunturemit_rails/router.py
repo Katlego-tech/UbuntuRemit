@@ -62,12 +62,14 @@ class RailRouter:
             for r in [SettlementRail.RIPPLE, SettlementRail.PAPSS, SettlementRail.SWIFT]
             if r != preferred_rail and (r != SettlementRail.PAPSS or corridor.papss_eligible)
         ]
-        all_candidate_rails = [preferred_rail] + alternate_candidates
+        # Only rails with a registered adapter are candidates. Skipping one mid-loop
+        # used to count a retry against the budget for a rail never attempted.
+        all_candidate_rails = [
+            r for r in [preferred_rail, *alternate_candidates] if r in self._adapters
+        ]
 
         for attempt_index, rail_candidate in enumerate(all_candidate_rails):
-            adapter = self._adapters.get(rail_candidate)
-            if adapter is None:
-                continue
+            adapter = self._adapters[rail_candidate]
 
             result = adapter.submit_settlement(pacs008_xml, current_transfer)
             attempts.append(result)

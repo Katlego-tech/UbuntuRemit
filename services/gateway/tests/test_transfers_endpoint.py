@@ -3,8 +3,15 @@
 import dataclasses
 
 from fastapi.testclient import TestClient
-from gateway_fakes import TEST_LIST, ScriptedTestLLMClient, configured_dependencies
+from gateway_fakes import (
+    TEST_LIST,
+    ScriptedTestLLMClient,
+    SimulatedTestRail,
+    configured_dependencies,
+)
+from ubunturemit_domain import SettlementRail
 from ubunturemit_gateway.app import create_app
+from ubunturemit_rails import RailRouter
 
 unconfigured = TestClient(create_app())
 configured = TestClient(create_app(configured_dependencies()))
@@ -127,3 +134,26 @@ def test_apps_do_not_share_transfers() -> None:
     t_id = first.post("/api/transfers", json=_payload()).json()["transfer_id"]
     other = TestClient(create_app(configured_dependencies()))
     assert other.get(f"/api/transfers/{t_id}").status_code == 404
+
+
+def test_exhausted_settlement_is_stored_as_failed() -> None:
+    failing = RailRouter(adapters={SettlementRail.PAPSS: SimulatedTestRail(fail=True)})
+    client = TestClient(
+        create_app(dataclasses.replace(configured_dependencies(), rail_router=failing))
+    )
+    data = client.post("/api/transfers", json=_payload()).json()
+    assert data["status"] == "FAILED"
+    assert data["selected_rail"] is None
+    assert client.get(f"/api/transfers/{data['transfer_id']}").json() == data
+
+
+def test_missing_rail_router_alone_is_named() -> None:
+    deps = dataclasses.replace(configured_dependencies(), rail_router=None)
+    client = TestClient(create_app(deps))
+    for resp in (
+        client.post("/api/transfers", json=_payload()),
+        client.get("/api/fx/quote?source=ZAR&target=GHS&amount=500000"),
+    ):
+        assert resp.status_code == 503
+        assert "rail_router" in resp.json()["detail"]
+        assert "quote_source" not in resp.json()["detail"]

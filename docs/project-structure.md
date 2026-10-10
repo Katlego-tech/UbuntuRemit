@@ -176,7 +176,8 @@ docker compose down    # add -v to discard the volumes
 
 `libs/domain`, `services/messaging`, `services/asco`, `services/audit`, and `services/rails` **are** built and verified
 under 249 tests spanning property tests, contract validation, state machine exhaustiveness, ISO 20022 schemas,
-multi-agent negotiation loops, append-only immutability triggers, and rail adapters with bounded fallback retries.
+multi-agent negotiation loops, append-only immutability triggers, and the bounded fallback-retry router.
+The rail adapters themselves are not built (T052-T054, blocked on sandbox credentials).
 The gate checks 15 verification targets across all 5 packages.
 
 `apps/web` is real and serves: the pages load the approved Stitch export. T024 self-hosts external
