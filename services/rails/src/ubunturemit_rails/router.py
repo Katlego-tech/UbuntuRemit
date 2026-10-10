@@ -52,6 +52,11 @@ class RailRouter:
         orchestrator: MasterOrchestrator,
     ) -> tuple[Transfer, RailSubmissionResult, list[RailSubmissionResult]]:
         """Submit settlement with automatic fallback on alternate rails, bounded at 2 retries."""
+        # The transfer was priced and approved for the preferred rail. With no adapter for
+        # it, settling elsewhere would carry another rail's terms nobody approved: refuse.
+        if preferred_rail not in self._adapters:
+            raise ValueError(f"No adapter registered for the approved rail {preferred_rail}.")
+
         attempts: list[RailSubmissionResult] = []
         current_transfer = transfer
 

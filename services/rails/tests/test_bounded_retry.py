@@ -164,3 +164,14 @@ def test_get_quotes_skips_papss_on_an_ineligible_corridor(transfer: Transfer) ->
     corridor = Corridor(source=CurrencyCode.ZAR, target=CurrencyCode.GHS, papss_eligible=False)
     quotes = router.get_quotes(corridor, transfer.quote.send)
     assert [q.rail for q in quotes] == [SettlementRail.SWIFT]
+
+
+def test_settlement_refuses_when_the_approved_rail_has_no_adapter(transfer: Transfer) -> None:
+    router = RailRouter(adapters={SettlementRail.SWIFT: SimulatedRail(SettlementRail.SWIFT)})
+    with pytest.raises(ValueError, match="approved rail"):
+        router.execute_settlement_with_retry(
+            transfer=transfer,
+            pacs008_xml=build_pacs008(transfer),
+            preferred_rail=SettlementRail.PAPSS,
+            orchestrator=MasterOrchestrator(),
+        )
