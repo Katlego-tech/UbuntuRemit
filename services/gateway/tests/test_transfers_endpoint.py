@@ -53,6 +53,7 @@ def test_transfer_without_sources_is_refused_and_names_them() -> None:
         "sentinel_client",
         "strategist_client",
         "sanctions_screener",
+        "limit_table",
         "rail_router",
         "audit_logger",
     ):

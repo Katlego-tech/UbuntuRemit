@@ -70,6 +70,7 @@ class ComplianceHealthResponse(BaseModel):
     missing_dependencies: list[str]
     rules_enforced: list[str]  # the rule IDs the deterministic entry gate can cite
     sanctions_list: str | None  # the loaded list's citation, or None when none is loaded
+    limit_table: str | None  # the loaded limit table's citation, or None
     audit_log: str | None  # the audit sink in use, by type; None when none is configured
     # No persistent screening history exists yet (T050a), so there is nothing to count.
     rejection_rate_24h: float | None = None

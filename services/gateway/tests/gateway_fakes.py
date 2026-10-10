@@ -10,6 +10,7 @@ from decimal import Decimal
 
 from ubunturemit_asco import (
     InMemoryAuditLogger,
+    LimitTable,
     RailQuote,
     SanctionsListSource,
     StaticSanctionsScreener,
@@ -29,6 +30,14 @@ from ubunturemit_rails import RailRouter, RailStatus, RailSubmissionResult
 
 TEST_RATE = Decimal("0.8500")
 TEST_FEE_MINOR_UNITS = 1500
+TEST_LIMITS = LimitTable(
+    source_name="gateway test fixture limits",
+    published=date(2026, 10, 1),
+    currency=CurrencyCode.ZAR,
+    single_transfer_limits={"L1": 500000, "L2": 5000000, "L3": 100000000},
+    cumulative_30d_limit=100000000,
+    pep_review_threshold=5000000,
+)
 TEST_LIST = SanctionsListSource(name="gateway test fixture list", published=date(2026, 10, 1))
 
 
@@ -113,4 +122,5 @@ def configured_dependencies() -> GatewayDependencies:
         rail_router=RailRouter(adapters={SettlementRail.PAPSS: SimulatedTestRail()}),
         # Test-only: the deployed gateway is given a KafkaAuditLogger (T050a).
         audit_logger=InMemoryAuditLogger(),
+        limit_table=TEST_LIMITS,
     )

@@ -227,7 +227,7 @@ Every field marked required above is read without a default: a missing one is ma
 | `services/asco/orchestrator/` | built (T042, T046) | State machine & negotiation coordinator — **deterministic, no LLM calls** |
 | `services/asco/agents/sentinel.py` | built (T043) | Compliance Sentinel prompt + schema binding; **refuses to exist without an inference client** |
 | `services/asco/agents/strategist.py` | built (T044) | Liquidity Strategist prompt + schema binding; **refuses to exist without an inference client** |
-| `services/asco/guardrails/entry.py` | built (T040, T041) | Schema, sanctions, limits |
+| `services/asco/guardrails/entry.py` | built (T040, T041, T041a, T071) | Schema, sanctions, limits — the sanctions list and the limit table are both injected with a named, dated source and cited on every rejection; no figure lives in code |
 | `services/asco/guardrails/exit.py` | built (T045) | Citation check, rail re-check, ISO 20022 validation |
 | `services/inference/` | planned | vLLM serving both models on one MI300X node |
 | `services/audit/` | built (T050, T051, T050a) | `KafkaAuditLogger` (acks=all, fails closed) → `asco.audit` → `KafkaAuditConsumer` → Postgres, writer role holds SELECT + INSERT only; triggers as the second wall. The production topic's retention is a SARB PEM figure not yet sourced — **T050b** |

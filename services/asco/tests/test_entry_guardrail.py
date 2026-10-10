@@ -17,6 +17,8 @@ from ubunturemit_asco.guardrails.entry import (
     EmptySanctionsListError,
     EntryGuardrail,
     GuardrailOutcome,
+    LimitTable,
+    LimitTableError,
     RecipientProfile,
     SanctionsListSource,
     SanctionsScreener,
@@ -117,6 +119,17 @@ def recipient_profile() -> RecipientProfile:
 TEST_LIST = SanctionsListSource(name="test fixture list", published=date(2026, 10, 1))
 
 
+# Limits built for these tests, named as such -- no regulator's figures are claimed.
+TEST_LIMITS = LimitTable(
+    source_name="test fixture limits",
+    published=date(2026, 10, 1),
+    currency=CurrencyCode.ZAR,
+    single_transfer_limits={"L1": 500000, "L2": 5000000, "L3": 100000000},
+    cumulative_30d_limit=100000000,
+    pep_review_threshold=5000000,
+)
+
+
 @pytest.fixture
 def sanctions_screener() -> SanctionsScreener:
     return StaticSanctionsScreener(
@@ -133,7 +146,7 @@ def test_entry_guardrail_pass_on_clean_transfer(
     sanctions_screener: SanctionsScreener,
 ) -> None:
     """Clean transfer with L3 profile passes all entry guardrail checks."""
-    guardrail = EntryGuardrail(sanctions_screener=sanctions_screener)
+    guardrail = EntryGuardrail(sanctions_screener=sanctions_screener, limit_table=TEST_LIMITS)
     xml_str = build_pain001(canonical_transfer)
 
     result = guardrail.evaluate(
@@ -154,7 +167,7 @@ def test_entry_guardrail_rejects_on_schema_violation(
     sanctions_screener: SanctionsScreener,
 ) -> None:
     """Invalid schema is rejected at gate 1 with cited rule."""
-    guardrail = EntryGuardrail(sanctions_screener=sanctions_screener)
+    guardrail = EntryGuardrail(sanctions_screener=sanctions_screener, limit_table=TEST_LIMITS)
     result = guardrail.evaluate(
         xml_input="<InvalidXmlDocument/>",
         sender_profile=sender_profile_l3,
@@ -198,7 +211,7 @@ def test_entry_guardrail_rejects_sanctioned_sender(
         prior_transfers_30d_count=0,
         prior_transfers_30d_minor_units=0,
     )
-    guardrail = EntryGuardrail(sanctions_screener=sanctions_screener)
+    guardrail = EntryGuardrail(sanctions_screener=sanctions_screener, limit_table=TEST_LIMITS)
     result = guardrail.evaluate(
         xml_input=xml_str,
         sender_profile=sender_profile,
@@ -237,7 +250,7 @@ def test_entry_guardrail_rejects_sanctioned_recipient(
     )
     xml_str = build_pain001(transfer)
 
-    guardrail = EntryGuardrail(sanctions_screener=sanctions_screener)
+    guardrail = EntryGuardrail(sanctions_screener=sanctions_screener, limit_table=TEST_LIMITS)
     result = guardrail.evaluate(
         xml_input=xml_str,
         sender_profile=sender_profile_l3,
@@ -281,7 +294,7 @@ def test_entry_guardrail_escalates_pep_above_threshold(
         prior_transfers_30d_count=0,
         prior_transfers_30d_minor_units=0,
     )
-    guardrail = EntryGuardrail(sanctions_screener=sanctions_screener)
+    guardrail = EntryGuardrail(sanctions_screener=sanctions_screener, limit_table=TEST_LIMITS)
     result = guardrail.evaluate(
         xml_input=xml_str,
         sender_profile=pep_profile,
@@ -291,6 +304,7 @@ def test_entry_guardrail_escalates_pep_above_threshold(
     assert result.outcome == GuardrailOutcome.ESCALATE
     assert result.stage == "PEP_SCREEN"
     assert "FIC_ACT_S21H_PEP" in result.cited_rules
+    assert TEST_LIMITS.citation() in result.cited_rules
 
 
 def test_entry_guardrail_rejects_amount_exceeding_kyc_tier(
@@ -325,7 +339,7 @@ def test_entry_guardrail_rejects_amount_exceeding_kyc_tier(
         prior_transfers_30d_count=0,
         prior_transfers_30d_minor_units=0,
     )
-    guardrail = EntryGuardrail(sanctions_screener=sanctions_screener)
+    guardrail = EntryGuardrail(sanctions_screener=sanctions_screener, limit_table=TEST_LIMITS)
     result = guardrail.evaluate(
         xml_input=xml_str,
         sender_profile=tier_l1_profile,
@@ -335,6 +349,7 @@ def test_entry_guardrail_rejects_amount_exceeding_kyc_tier(
     assert result.outcome == GuardrailOutcome.REJECTED
     assert result.stage == "LIMITS"
     assert "FICA_TIER_LIMIT" in result.cited_rules
+    assert TEST_LIMITS.citation() in result.cited_rules
     assert "SARB_EXCON_LIMIT_EXCEEDED" in result.cited_rules
 
 
@@ -370,7 +385,7 @@ def test_entry_guardrail_rejects_sda_cap_exceeded(
         # 900,000 ZAR already spent (900k + 200k = 1.1M > 1M SDA cap)
         prior_transfers_30d_minor_units=90000000,
     )
-    guardrail = EntryGuardrail(sanctions_screener=sanctions_screener)
+    guardrail = EntryGuardrail(sanctions_screener=sanctions_screener, limit_table=TEST_LIMITS)
     result = guardrail.evaluate(
         xml_input=xml_str,
         sender_profile=profile_near_cap,
@@ -380,6 +395,7 @@ def test_entry_guardrail_rejects_sda_cap_exceeded(
     assert result.outcome == GuardrailOutcome.REJECTED
     assert result.stage == "LIMITS"
     assert "SARB_EXCON_SDA_CAP_EXCEEDED" in result.cited_rules
+    assert TEST_LIMITS.citation() in result.cited_rules
 
 
 # --- T041a: no code path screens against zero entries and reports CLEAR ----------
@@ -387,7 +403,7 @@ def test_entry_guardrail_rejects_sda_cap_exceeded(
 
 def test_unconfigured_guardrail_refuses_to_screen() -> None:
     with pytest.raises(EmptySanctionsListError):
-        EntryGuardrail(sanctions_screener=None)  # type: ignore[arg-type]
+        EntryGuardrail(sanctions_screener=None, limit_table=TEST_LIMITS)  # type: ignore[arg-type]
 
 
 def test_screener_over_an_empty_list_refuses_to_exist() -> None:
@@ -417,10 +433,44 @@ def test_unknown_kyc_tier_is_refused_not_coerced(
         prior_transfers_30d_count=0,
         prior_transfers_30d_minor_units=0,
     )
-    result = EntryGuardrail(sanctions_screener=sanctions_screener).evaluate(
+    result = EntryGuardrail(
+        sanctions_screener=sanctions_screener, limit_table=TEST_LIMITS
+    ).evaluate(
         xml_input=build_pain001(canonical_transfer),
         sender_profile=profile,
         recipient_profile=recipient_profile,
     )
     assert result.outcome == GuardrailOutcome.REJECTED
-    assert result.cited_rules == ["LIMIT_TABLE_UNAVAILABLE"]
+    assert result.cited_rules == ["LIMIT_TABLE_UNAVAILABLE", TEST_LIMITS.citation()]
+
+
+# --- T071: the gate's limits come from a named, dated source -----------------------
+
+
+def test_guardrail_without_a_limit_table_refuses(sanctions_screener: SanctionsScreener) -> None:
+    with pytest.raises(LimitTableError):
+        EntryGuardrail(sanctions_screener=sanctions_screener, limit_table=None)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"source_name": " "},
+        {"single_transfer_limits": {}},
+        {"single_transfer_limits": {"L1": 0}},
+        {"pep_review_threshold": -1},
+    ],
+    ids=["unnamed", "no-tiers", "zero-limit", "negative-threshold"],
+)
+def test_limit_table_rejects_an_unusable_table(overrides: dict[str, object]) -> None:
+    fields: dict[str, object] = {
+        "source_name": "x",
+        "published": date(2026, 10, 1),
+        "currency": CurrencyCode.ZAR,
+        "single_transfer_limits": {"L1": 1},
+        "cumulative_30d_limit": 1,
+        "pep_review_threshold": 1,
+        **overrides,
+    }
+    with pytest.raises(LimitTableError):
+        LimitTable(**fields)  # type: ignore[arg-type]

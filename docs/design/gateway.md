@@ -32,6 +32,7 @@ classDiagram
         +LLMClient? sentinel_client
         +LLMClient? strategist_client
         +SanctionsScreener? sanctions_screener
+        +LimitTable? limit_table
         +RailRouter? rail_router
         +AuditLogger? audit_logger
         +missing() list~str~
@@ -69,7 +70,7 @@ classDiagram
 `create_app(dependencies)` stores one `GatewayDependencies` on `app.state`, beside a fresh
 `GatewayRuntime` (the orchestrator and the responses already given) — nothing is
 shared between app instances. **Only the audit logger has a production implementation
-(`ubunturemit_audit.KafkaAuditLogger`, T050a); the other five do not exist yet**, so the
+(`ubunturemit_audit.KafkaAuditLogger`, T050a); the other six do not exist yet**, so the
 module-level `app` answers 503 on every
 endpoint that needs one. That is the correct behaviour today, not a gap to paper over:
 
@@ -78,6 +79,7 @@ endpoint that needs one. That is the correct behaviour today, not a gap to paper
 | `quote_source` | a live FX rate provider | `GET /api/fx/quote`, `POST /api/transfers` → 503 |
 | `sentinel_client`, `strategist_client` | `services/inference` — vLLM on the MI300X ([asco-orchestrator.md](asco-orchestrator.md) §3, *planned*) | `POST /api/transfers` → 503 |
 | `sanctions_screener` | a published list (e.g. the UN consolidated list) loaded with its own date | `POST /api/transfers` → 503 |
+| `limit_table` | the KYC / EXCON limits as published by their regulator, loaded with the source's name and date | `POST /api/transfers` → 503 |
 | `audit_logger` | `ubunturemit_audit.KafkaAuditLogger` — waits for the broker's ack, raises otherwise (T050a) | `POST /api/transfers` → 503 |
 | `rail_router` | a `RailRouter` over real Ripple / PAPSS / SWIFT adapters — T052–T054, blocked on sandbox credentials | `GET /api/fx/quote`, `POST /api/transfers` → 503 |
 
@@ -127,7 +129,7 @@ sequenceDiagram
   audited with `deterministicOverride`), as the Sentinel does — never a 500, never a settlement.
 - **`GET /api/compliance/health`** reports the wiring, nothing more: `status` is `OPERATIONAL` only
   when `missing_dependencies` is empty; `rules_enforced` is `ENTRY_GATE_RULES` from the entry
-  guardrail; `sanctions_list` is the loaded list's citation or `null`; `rejection_rate_24h` and
+  guardrail; `sanctions_list` and `limit_table` are the loaded sources' citations or `null`; `rejection_rate_24h` and
   `total_screened_24h` are `null` until a persistent screening history exists (T050a); `audit_log`
   names the audit sink type in use. It names no hardware and no model size.
 - **Removed:** `GET /api/wallet` and `GET /api/session` returned a real bank's name with invented

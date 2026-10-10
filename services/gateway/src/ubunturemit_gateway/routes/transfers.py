@@ -54,6 +54,7 @@ def initiate_transfer(
     quote_source, screener = deps.quote_source, deps.sanctions_screener
     sentinel_client, strategist_client = deps.sentinel_client, deps.strategist_client
     rail_router, audit_logger = deps.rail_router, deps.audit_logger
+    limit_table = deps.limit_table
     if (
         quote_source is None
         or screener is None
@@ -61,6 +62,7 @@ def initiate_transfer(
         or strategist_client is None
         or rail_router is None
         or audit_logger is None
+        or limit_table is None
     ):
         raise not_configured(*deps.missing())
 
@@ -110,7 +112,7 @@ def initiate_transfer(
     )
 
     # 1. Evaluate Entry Guardrail
-    entry_guardrail = EntryGuardrail(sanctions_screener=screener)
+    entry_guardrail = EntryGuardrail(sanctions_screener=screener, limit_table=limit_table)
     sender_prof = SenderProfile(
         kyc_tier=req.sender_kyc_tier,
         country_of_residence=req.sender_country.upper(),

@@ -21,5 +21,6 @@ def get_compliance_health(
         missing_dependencies=missing,
         rules_enforced=list(ENTRY_GATE_RULES),
         sanctions_list=screener.source.citation() if screener is not None else None,
+        limit_table=deps.limit_table.citation() if deps.limit_table is not None else None,
         audit_log=type(deps.audit_logger).__name__ if deps.audit_logger is not None else None,
     )
