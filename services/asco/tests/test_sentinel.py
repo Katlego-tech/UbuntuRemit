@@ -13,6 +13,7 @@ from decimal import Decimal
 import pytest
 from ubunturemit_asco.agents.sentinel import (
     ComplianceSentinel,
+    InferenceBackendMissingError,
     InferenceTimeoutError,
 )
 from ubunturemit_asco.models import (
@@ -120,3 +121,9 @@ def test_compliance_sentinel_timeout_fails_closed(sample_input: ComplianceAssess
 
     assert verdict.outcome == VerdictOutcome.ESCALATE
     assert "INFERENCE_TIMEOUT_FAIL_CLOSED" in verdict.cited_rules
+
+
+def test_sentinel_without_inference_backend_refuses() -> None:
+    """No model attached -> no Sentinel. It never synthesises a verdict (Non-negotiable I)."""
+    with pytest.raises(InferenceBackendMissingError):
+        ComplianceSentinel(llm_client=None)  # type: ignore[arg-type]

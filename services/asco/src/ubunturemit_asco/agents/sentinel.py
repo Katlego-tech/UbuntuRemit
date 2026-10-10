@@ -41,6 +41,14 @@ class InferenceTimeoutError(Exception):
     """Raised when an inference call exceeds SLA window."""
 
 
+class InferenceBackendMissingError(ValueError):
+    """Raised when an agent is built with no inference backend.
+
+    Non-negotiable I: with no model attached there is no assessment to report, so the
+    agent refuses to exist rather than synthesising one.
+    """
+
+
 class LLMClient(Protocol):
     """Protocol for constrained-decoding LLM inference backend."""
 
@@ -52,7 +60,12 @@ class LLMClient(Protocol):
 class ComplianceSentinel:
     """Compliance Sentinel agent wrapper with constrained decoding."""
 
-    def __init__(self, llm_client: LLMClient | None = None) -> None:
+    def __init__(self, llm_client: LLMClient) -> None:
+        if llm_client is None:
+            raise InferenceBackendMissingError(
+                "ComplianceSentinel needs an inference backend; without one it refuses "
+                "rather than synthesising a verdict (Non-negotiable I)."
+            )
         self._client = llm_client
 
     def assess(
@@ -103,10 +116,6 @@ class ComplianceSentinel:
             f"on corridor {corridor_desc}"
         )
         action = f"Prompting 70B Compliance Sentinel with payload: {payload_json}"
-
-        if self._client is None:
-            # Default deterministic assessment for testing when no LLM client injected
-            return self._deterministic_fallback_assessment(assessment_input), thought, action
 
         # First attempt
         try:
@@ -183,25 +192,4 @@ class ComplianceSentinel:
             cited_rules=cited_rules,
             rationale=rationale,
             constraints=constraints,
-        )
-
-    def _deterministic_fallback_assessment(
-        self,
-        inp: ComplianceAssessmentInput,
-    ) -> ComplianceVerdict:
-        """Deterministic assessment for test harnesses without mock LLMs."""
-        if inp.sender_is_pep and inp.amount.minor_units > 5000000:
-            return ComplianceVerdict(
-                outcome=VerdictOutcome.ESCALATE,
-                risk_score=Decimal("0.65"),
-                cited_rules=["FIC_ACT_S21H_PEP"],
-                rationale="PEP transfer above standard threshold requires review.",
-            )
-
-        return ComplianceVerdict(
-            outcome=VerdictOutcome.PASS,
-            risk_score=Decimal("0.10"),
-            cited_rules=["FICA_S21_VERIFIED", "SARB_EXCON_B4_COMPLIANT"],
-            rationale="Transfer is compliant with FICA KYC requirements and SARB EXCON limits.",
-            constraints=ComplianceConstraints(),
         )

@@ -14,6 +14,7 @@ from ubunturemit_asco.guardrails.exit import ExitValidator
 from ubunturemit_asco.models import (
     AuditRecord,
     ComplianceAssessmentInput,
+    ComplianceVerdict,
     LiquidityProposal,
     LiquidityRequestInput,
     RailQuote,
@@ -54,6 +55,8 @@ class NegotiationResult:
     proposal: LiquidityProposal | None = None
     audit_records: list[AuditRecord] = field(default_factory=list)
     reason: str = ""
+    # The Sentinel verdict the outcome rests on -- its citedRules are what a caller cites.
+    verdict: ComplianceVerdict | None = None
 
 
 class NegotiationCoordinator:
@@ -61,15 +64,18 @@ class NegotiationCoordinator:
 
     def __init__(
         self,
+        *,
+        compliance_sentinel: ComplianceSentinel,
+        liquidity_strategist: LiquidityStrategist,
         master_orchestrator: MasterOrchestrator | None = None,
-        compliance_sentinel: ComplianceSentinel | None = None,
-        liquidity_strategist: LiquidityStrategist | None = None,
         exit_validator: ExitValidator | None = None,
         audit_logger: AuditLogger | None = None,
     ) -> None:
+        # The two agents have no default: building one needs an inference backend, and a
+        # coordinator that quietly built its own would be how a fallback verdict returns.
         self._mo = master_orchestrator or MasterOrchestrator()
-        self._cs = compliance_sentinel or ComplianceSentinel()
-        self._ls = liquidity_strategist or LiquidityStrategist()
+        self._cs = compliance_sentinel
+        self._ls = liquidity_strategist
         self._xv = exit_validator or ExitValidator()
         self._audit = audit_logger or InMemoryAuditLogger()
 
@@ -128,6 +134,7 @@ class NegotiationCoordinator:
                 observation=f"Rejection cited: {verdict.cited_rules}",
             )
             return NegotiationResult(
+                verdict=verdict,
                 transfer=current_transfer,
                 outcome="REJECTED",
                 audit_records=audit_trail,
@@ -143,6 +150,7 @@ class NegotiationCoordinator:
                 observation=f"Escalation rationale: {verdict.rationale}",
             )
             return NegotiationResult(
+                verdict=verdict,
                 transfer=current_transfer,
                 outcome="PENDING_REVIEW",
                 audit_records=audit_trail,
@@ -195,6 +203,7 @@ class NegotiationCoordinator:
                 override=True,
             )
             return NegotiationResult(
+                verdict=verdict,
                 transfer=current_transfer,
                 outcome="PENDING_REVIEW",
                 audit_records=audit_trail,
@@ -234,6 +243,7 @@ class NegotiationCoordinator:
         if not exit_result.valid:
             rejected_t = self._mo.transition(updated_transfer, TransferState.REJECTED)
             return NegotiationResult(
+                verdict=verdict,
                 transfer=rejected_t,
                 outcome="REJECTED",
                 proposal=proposal,
@@ -252,6 +262,7 @@ class NegotiationCoordinator:
         )
 
         return NegotiationResult(
+            verdict=verdict,
             transfer=settling_t,
             outcome="SETTLING",
             proposal=proposal,

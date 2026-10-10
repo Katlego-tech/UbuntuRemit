@@ -11,6 +11,7 @@ from decimal import Decimal
 
 import pytest
 from conftest import MockLLMClient
+from ubunturemit_asco.agents.sentinel import InferenceBackendMissingError
 from ubunturemit_asco.agents.strategist import LiquidityStrategist
 from ubunturemit_asco.models import (
     ComplianceConstraints,
@@ -71,11 +72,7 @@ def test_liquidity_strategist_valid_proposal(sample_request: LiquidityRequestInp
     assert proposal.estimated_seconds == Decimal("3.2")
 
 
-def test_liquidity_strategist_deterministic_fallback(sample_request: LiquidityRequestInput) -> None:
-    """Without LLM client, Strategist deterministically selects lowest fee / fastest rail."""
-    strategist = LiquidityStrategist(llm_client=None)
-    proposal, thought, action = strategist.propose(sample_request)
-
-    assert proposal.rail == SettlementRail.RIPPLE
-    assert proposal.total_cost.minor_units == 0
-    assert proposal.estimated_seconds == Decimal("3.2")
+def test_liquidity_strategist_without_inference_backend_refuses() -> None:
+    """No model attached -> no Strategist. It never synthesises a proposal (Non-negotiable I)."""
+    with pytest.raises(InferenceBackendMissingError):
+        LiquidityStrategist(llm_client=None)  # type: ignore[arg-type]

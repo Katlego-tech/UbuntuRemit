@@ -1,31 +1,24 @@
-"""Quotes API endpoint -- docs/design/frontend-web.md §4."""
+"""Quotes API endpoint -- docs/design/gateway.md §5."""
 
-from datetime import UTC, datetime, timedelta
-from decimal import Decimal
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Query
-from ubunturemit_domain import (
-    Corridor,
-    CurrencyCode,
-    FxQuote,
-    Money,
-    RateSource,
-    TransferQuote,
+from fastapi import APIRouter, Depends, HTTPException, Query
+from ubunturemit_domain import CurrencyCode, Money
+from ubunturemit_gateway.dependencies import (
+    GatewayDependencies,
+    UnsupportedCorridorError,
+    get_dependencies,
+    not_configured,
 )
 from ubunturemit_gateway.models import QuoteResponse
 from ubunturemit_rails import RailRouter
 
 router = APIRouter(prefix="/api/fx", tags=["Quotes"])
 
-CORRIDOR_RATES: dict[tuple[CurrencyCode, CurrencyCode], tuple[Decimal, bool]] = {
-    (CurrencyCode.ZAR, CurrencyCode.GHS): (Decimal("0.8500"), True),
-    (CurrencyCode.ZAR, CurrencyCode.NGN): (Decimal("82.5000"), True),
-    (CurrencyCode.ZAR, CurrencyCode.KES): (Decimal("7.2000"), True),
-}
-
 
 @router.get("/quote", response_model=QuoteResponse)
 def get_quote(
+    deps: Annotated[GatewayDependencies, Depends(get_dependencies)],
     source: str = Query(..., description="Source currency code (e.g. ZAR)"),
     target: str = Query(..., description="Target currency code (e.g. GHS)"),
     amount: int = Query(..., gt=0, description="Send amount in minor units"),
@@ -36,46 +29,26 @@ def get_quote(
     except ValueError as err:
         raise HTTPException(status_code=400, detail=f"Unsupported currency: {err}") from err
 
-    key = (src_code, tgt_code)
-    if key not in CORRIDOR_RATES:
-        raise HTTPException(
-            status_code=404,
-            detail=f"No active liquidity bridge for corridor {src_code}->{tgt_code}",
-        )
+    if deps.quote_source is None:
+        raise not_configured("quote_source")
 
-    rate, papss_elig = CORRIDOR_RATES[key]
-    corridor = Corridor(source=src_code, target=tgt_code, papss_eligible=papss_elig)
     send_money = Money(minor_units=amount, currency=src_code)
+    try:
+        quote = deps.quote_source.quote(src_code, tgt_code, send_money)
+    except UnsupportedCorridorError as err:
+        raise HTTPException(status_code=404, detail=str(err)) from err
 
-    now = datetime.now(UTC)
-    fx = FxQuote(
-        corridor=corridor,
-        rate=rate,
-        guaranteed=True,
-        captured_at=now,
-        expires_at=now + timedelta(minutes=15),
-        source=RateSource.LIVE_INTERBANK,
-    )
-    recip_units = int(round(Decimal(send_money.minor_units) * rate))
-    quote = TransferQuote(
-        send=send_money,
-        fee=Money(minor_units=1500, currency=src_code),
-        recipient_receives=Money(minor_units=recip_units, currency=tgt_code),
-        fx=fx,
-    )
-
-    rail_router = RailRouter()
-    rail_quotes = rail_router.get_quotes(corridor, send_money)
-    available_rails = [q.rail.value for q in rail_quotes]
-    fastest_sec = min((q.estimated_seconds for q in rail_quotes), default=Decimal("3.2"))
+    rail_quotes = RailRouter().get_quotes(quote.fx.corridor, send_money)
+    if not rail_quotes:
+        raise HTTPException(status_code=503, detail="No rail quotes available for this corridor.")
 
     return QuoteResponse(
         source_currency=src_code.value,
         target_currency=tgt_code.value,
         send_amount_minor_units=quote.send.minor_units,
         recipient_receives_minor_units=quote.recipient_receives.minor_units,
-        exchange_rate=rate,
+        exchange_rate=quote.fx.rate,
         fee_minor_units=quote.fee.minor_units,
-        estimated_seconds=fastest_sec,
-        available_rails=available_rails,
+        estimated_seconds=min(q.estimated_seconds for q in rail_quotes),
+        available_rails=[q.rail.value for q in rail_quotes],
     )

@@ -7,7 +7,11 @@ Selects exclusively from provided RailQuotes.
 import json
 from decimal import Decimal
 
-from ubunturemit_asco.agents.sentinel import InferenceTimeoutError, LLMClient
+from ubunturemit_asco.agents.sentinel import (
+    InferenceBackendMissingError,
+    InferenceTimeoutError,
+    LLMClient,
+)
 from ubunturemit_asco.models import (
     LiquidityProposal,
     LiquidityRequestInput,
@@ -32,7 +36,12 @@ You MUST return a valid JSON object matching the LiquidityProposal schema:
 class LiquidityStrategist:
     """Liquidity Strategist agent selecting optimal settlement rail."""
 
-    def __init__(self, llm_client: LLMClient | None = None) -> None:
+    def __init__(self, llm_client: LLMClient) -> None:
+        if llm_client is None:
+            raise InferenceBackendMissingError(
+                "LiquidityStrategist needs an inference backend; without one it refuses "
+                "rather than synthesising a proposal (Non-negotiable I)."
+            )
         self._client = llm_client
 
     def propose(
@@ -87,26 +96,6 @@ class LiquidityStrategist:
             f"for transfer {request_input.transfer_id}"
         )
         action = f"Prompting 32B Liquidity Strategist with payload: {payload_json}"
-
-        if self._client is None:
-            # Deterministic selection: pick lowest total fee, breaking ties by fastest settlement
-            best_quote = min(
-                eligible_quotes,
-                key=lambda q: (q.fee_minor_units, q.estimated_seconds),
-            )
-            proposal = LiquidityProposal(
-                rail=best_quote.rail,
-                total_cost=Money(
-                    minor_units=best_quote.fee_minor_units,
-                    currency=request_input.amount.currency,
-                ),
-                estimated_seconds=best_quote.estimated_seconds,
-                rationale=(
-                    f"Selected {best_quote.rail} as optimal rail with fee "
-                    f"{best_quote.fee_minor_units} and {best_quote.estimated_seconds}s latency."
-                ),
-            )
-            return proposal, thought, action
 
         try:
             raw_response = self._client.complete(

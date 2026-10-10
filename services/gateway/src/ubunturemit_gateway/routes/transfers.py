@@ -1,10 +1,10 @@
-"""Transfers API endpoints -- docs/design/frontend-web.md §4, §6."""
+"""Transfers API endpoints -- docs/design/gateway.md §4, §5."""
 
 import uuid
-from datetime import UTC, datetime, timedelta
-from decimal import Decimal
+from datetime import UTC, datetime
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from ubunturemit_asco import (
     ComplianceAssessmentInput,
     ComplianceSentinel,
@@ -18,25 +18,25 @@ from ubunturemit_asco import (
     RecipientProfile,
     SenderProfile,
 )
-from ubunturemit_asco.guardrails.entry import StaticSanctionsScreener
 from ubunturemit_domain import (
     ComplianceDeclaration,
-    Corridor,
     CountryCode,
     CurrencyCode,
-    FxQuote,
     Money,
     Party,
     PaymentPurpose,
-    RateSource,
     SourceOfFunds,
     Transfer,
     TransferId,
-    TransferQuote,
     TransferState,
 )
+from ubunturemit_gateway.dependencies import (
+    GatewayDependencies,
+    UnsupportedCorridorError,
+    get_dependencies,
+    not_configured,
+)
 from ubunturemit_gateway.models import TransferInitiationRequest, TransferResponse
-from ubunturemit_gateway.routes.quotes import CORRIDOR_RATES
 from ubunturemit_messaging import build_pacs008, build_pain001
 from ubunturemit_rails import RailRouter
 
@@ -49,7 +49,22 @@ AUDIT_LOGGER = InMemoryAuditLogger()
 
 
 @router.post("", response_model=TransferResponse)
-def initiate_transfer(req: TransferInitiationRequest) -> TransferResponse:
+def initiate_transfer(
+    req: TransferInitiationRequest,
+    deps: Annotated[GatewayDependencies, Depends(get_dependencies)],
+) -> TransferResponse:
+    # Every source is checked before any work: a transfer is either priced, screened and
+    # assessed by real sources, or refused -- never part-way on a stand-in.
+    quote_source, screener = deps.quote_source, deps.sanctions_screener
+    sentinel_client, strategist_client = deps.sentinel_client, deps.strategist_client
+    if (
+        quote_source is None
+        or screener is None
+        or sentinel_client is None
+        or strategist_client is None
+    ):
+        raise not_configured(*deps.missing())
+
     try:
         src_code = CurrencyCode(req.source_currency.upper())
         tgt_code = CurrencyCode(req.target_currency.upper())
@@ -58,30 +73,12 @@ def initiate_transfer(req: TransferInitiationRequest) -> TransferResponse:
     except ValueError as err:
         raise HTTPException(status_code=400, detail=f"Invalid transfer parameter: {err}") from err
 
-    key = (src_code, tgt_code)
-    if key not in CORRIDOR_RATES:
-        raise HTTPException(status_code=404, detail="Corridor unsupported")
-
-    rate, papss_elig = CORRIDOR_RATES[key]
-    corridor = Corridor(source=src_code, target=tgt_code, papss_eligible=papss_elig)
     send_money = Money(minor_units=req.send_amount_minor_units, currency=src_code)
-
-    now = datetime.now(UTC)
-    fx = FxQuote(
-        corridor=corridor,
-        rate=rate,
-        guaranteed=True,
-        captured_at=now,
-        expires_at=now + timedelta(minutes=15),
-        source=RateSource.LIVE_INTERBANK,
-    )
-    recip_units = int(round(Decimal(send_money.minor_units) * rate))
-    quote = TransferQuote(
-        send=send_money,
-        fee=Money(minor_units=1500, currency=src_code),
-        recipient_receives=Money(minor_units=recip_units, currency=tgt_code),
-        fx=fx,
-    )
+    try:
+        quote = quote_source.quote(src_code, tgt_code, send_money)
+    except UnsupportedCorridorError as err:
+        raise HTTPException(status_code=404, detail=str(err)) from err
+    corridor = quote.fx.corridor
 
     t_id = TransferId(f"TR-{uuid.uuid4().hex[:8].upper()}")
     ref = f"UB-{uuid.uuid4().hex[:8].upper()}"
@@ -114,18 +111,17 @@ def initiate_transfer(req: TransferInitiationRequest) -> TransferResponse:
     )
 
     # 1. Evaluate Entry Guardrail
-    screener = StaticSanctionsScreener(sanctioned_names={"Sanctioned Person"})
     entry_guardrail = EntryGuardrail(sanctions_screener=screener)
     sender_prof = SenderProfile(
         kyc_tier="L3" if "3" in req.sender_kyc_tier else "L2",
         country_of_residence=req.sender_country.upper(),
         is_pep=req.sender_is_pep,
-        prior_transfers_30d_count=0,
-        prior_transfers_30d_minor_units=0,
+        prior_transfers_30d_count=req.sender_prior_transfers_30d_count,
+        prior_transfers_30d_minor_units=req.sender_prior_transfers_30d_minor_units,
     )
     recipient_prof = RecipientProfile(
         country_of_residence=req.recipient_country.upper(),
-        account_age_days=180,
+        account_age_days=req.recipient_account_age_days,
     )
 
     pain001_xml = build_pain001(transfer)
@@ -150,8 +146,8 @@ def initiate_transfer(req: TransferInitiationRequest) -> TransferResponse:
 
     coordinator = NegotiationCoordinator(
         master_orchestrator=ORCHESTRATOR,
-        compliance_sentinel=ComplianceSentinel(),
-        liquidity_strategist=LiquidityStrategist(),
+        compliance_sentinel=ComplianceSentinel(llm_client=sentinel_client),
+        liquidity_strategist=LiquidityStrategist(llm_client=strategist_client),
         exit_validator=ExitValidator(),
         audit_logger=AUDIT_LOGGER,
     )
@@ -167,7 +163,9 @@ def initiate_transfer(req: TransferInitiationRequest) -> TransferResponse:
         sender_country=req.sender_country,
         sender_is_pep=req.sender_is_pep,
         recipient_country=req.recipient_country,
-        recipient_account_age_days=180,
+        recipient_account_age_days=req.recipient_account_age_days,
+        prior_transfers_30d_count=req.sender_prior_transfers_30d_count,
+        prior_transfers_30d_minor_units=req.sender_prior_transfers_30d_minor_units,
     )
 
     neg_result = coordinator.negotiate_and_settle(
@@ -186,7 +184,7 @@ def initiate_transfer(req: TransferInitiationRequest) -> TransferResponse:
             selected_rail=None,
             fee_minor_units=quote.fee.minor_units,
             settlement_seconds=None,
-            cited_rules=[],
+            cited_rules=neg_result.verdict.cited_rules if neg_result.verdict else [],
             reason=neg_result.reason,
         )
 
@@ -209,8 +207,8 @@ def initiate_transfer(req: TransferInitiationRequest) -> TransferResponse:
         selected_rail=settled_transfer.rail.value if settled_transfer.rail else None,
         fee_minor_units=sub_result.fee.minor_units,
         settlement_seconds=settled_transfer.settlement_seconds,
-        cited_rules=["FIC_ACT_S28A", "SARB_EXCON_B4"],
-        reason="Settlement completed successfully",
+        cited_rules=neg_result.verdict.cited_rules if neg_result.verdict else [],
+        reason=f"Rail reported {sub_result.status.value}",
     )
 
 
