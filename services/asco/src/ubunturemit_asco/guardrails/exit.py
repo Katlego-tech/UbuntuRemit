@@ -78,7 +78,8 @@ class ExitValidator:
         if proposal is not None:
             quotes = rail_quotes or []
             offered_rails = {q.rail for q in quotes}
-            if offered_rails and proposal.rail not in offered_rails:
+            # No quotes offered means no rail can be justified -- fail closed.
+            if proposal.rail not in offered_rails:
                 return ExitValidationResult(
                     valid=False,
                     stage="RAIL_ELIGIBILITY",

@@ -249,3 +249,19 @@ def test_exit_validator_rejects_cost_below_quoted_fee(canonical_transfer: Transf
     assert result.valid is False
     assert result.deterministic_override is True
     assert "below" in result.reason
+
+
+def test_exit_validator_rejects_a_proposal_when_no_quotes_were_offered(
+    canonical_transfer: Transfer,
+) -> None:
+    proposal = LiquidityProposal(
+        rail=SettlementRail.PAPSS,
+        total_cost=Money(minor_units=1200, currency=CurrencyCode.ZAR),
+        estimated_seconds=Decimal("11.0"),
+        rationale="No quotes, yet a rail.",
+    )
+    result = ExitValidator().validate(
+        transfer=canonical_transfer, verdict=_pass_verdict(), proposal=proposal, rail_quotes=[]
+    )
+    assert result.valid is False
+    assert result.deterministic_override is True

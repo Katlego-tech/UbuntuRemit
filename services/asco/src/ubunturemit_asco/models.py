@@ -47,8 +47,9 @@ class ComplianceAssessmentInput:
     sender_is_pep: bool
     recipient_country: str
     recipient_account_age_days: int
-    prior_transfers_30d_count: int = 0
-    prior_transfers_30d_minor_units: int = 0
+    # No defaults: a zero here is a claim about the sender's history, not an absence of one.
+    prior_transfers_30d_count: int
+    prior_transfers_30d_minor_units: int
 
 
 @dataclass(frozen=True, slots=True)

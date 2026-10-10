@@ -104,6 +104,8 @@ def transfer_and_assessment() -> tuple[Transfer, ComplianceAssessmentInput, list
         sender_is_pep=False,
         recipient_country="GH",
         recipient_account_age_days=300,
+        prior_transfers_30d_count=0,
+        prior_transfers_30d_minor_units=0,
     )
     quotes = [
         RailQuote(
@@ -257,3 +259,51 @@ def test_negotiation_strategist_timeout_fails_closed(
     assert result.outcome == "PENDING_REVIEW"
     assert result.proposal is None
     assert any(r.deterministic_override for r in audit_logger.records)
+
+
+@pytest.mark.parametrize(
+    "reply",
+    [
+        "not json at all",
+        json.dumps(
+            {"rail": "PAPSS", "totalCost": None, "estimatedSeconds": 11.0, "rationale": "x"}
+        ),
+        json.dumps(
+            {
+                "rail": "PAPSS",
+                "totalCost": {"minorUnits": 1},
+                "estimatedSeconds": "abc",
+                "rationale": "x",
+            }
+        ),
+    ],
+    ids=["unparseable", "null-cost-TypeError", "bad-decimal-InvalidOperation"],
+)
+def test_negotiation_any_strategist_failure_escalates(
+    transfer_and_assessment: tuple[Transfer, ComplianceAssessmentInput, list[RailQuote]],
+    reply: str,
+) -> None:
+    """Whatever exception a malformed proposal raises, the loop escalates -- never a 500."""
+    transfer, assessment_input, quotes = transfer_and_assessment
+    coordinator = NegotiationCoordinator(
+        compliance_sentinel=_passing_sentinel(),
+        liquidity_strategist=LiquidityStrategist(llm_client=MockLLMClient([reply, reply])),
+    )
+    result = coordinator.negotiate_and_settle(
+        transfer=transfer, assessment_input=assessment_input, rail_quotes=quotes
+    )
+    assert result.outcome == "PENDING_REVIEW"
+
+
+def test_negotiation_with_no_rail_quotes_escalates(
+    transfer_and_assessment: tuple[Transfer, ComplianceAssessmentInput, list[RailQuote]],
+) -> None:
+    transfer, assessment_input, _ = transfer_and_assessment
+    coordinator = NegotiationCoordinator(
+        compliance_sentinel=_passing_sentinel(),
+        liquidity_strategist=_papss_strategist(),
+    )
+    result = coordinator.negotiate_and_settle(
+        transfer=transfer, assessment_input=assessment_input, rail_quotes=[]
+    )
+    assert result.outcome == "PENDING_REVIEW"

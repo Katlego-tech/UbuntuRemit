@@ -195,6 +195,8 @@ def test_entry_guardrail_rejects_sanctioned_sender(
         kyc_tier="L3",
         country_of_residence="ZA",
         is_pep=False,
+        prior_transfers_30d_count=0,
+        prior_transfers_30d_minor_units=0,
     )
     guardrail = EntryGuardrail(sanctions_screener=sanctions_screener)
     result = guardrail.evaluate(
@@ -276,6 +278,8 @@ def test_entry_guardrail_escalates_pep_above_threshold(
         kyc_tier="L3",
         country_of_residence="ZA",
         is_pep=True,
+        prior_transfers_30d_count=0,
+        prior_transfers_30d_minor_units=0,
     )
     guardrail = EntryGuardrail(sanctions_screener=sanctions_screener)
     result = guardrail.evaluate(
@@ -318,6 +322,8 @@ def test_entry_guardrail_rejects_amount_exceeding_kyc_tier(
         kyc_tier="L1",
         country_of_residence="ZA",
         is_pep=False,
+        prior_transfers_30d_count=0,
+        prior_transfers_30d_minor_units=0,
     )
     guardrail = EntryGuardrail(sanctions_screener=sanctions_screener)
     result = guardrail.evaluate(
@@ -397,3 +403,24 @@ def test_screener_over_blank_entries_refuses_to_exist() -> None:
 def test_sanctions_source_needs_a_name() -> None:
     with pytest.raises(ValueError, match="name"):
         SanctionsListSource(name=" ", published=date(2026, 10, 1))
+
+
+def test_unknown_kyc_tier_is_refused_not_coerced(
+    canonical_transfer: Transfer,
+    recipient_profile: RecipientProfile,
+    sanctions_screener: SanctionsScreener,
+) -> None:
+    profile = SenderProfile(
+        kyc_tier="TIER_3",
+        country_of_residence="ZA",
+        is_pep=False,
+        prior_transfers_30d_count=0,
+        prior_transfers_30d_minor_units=0,
+    )
+    result = EntryGuardrail(sanctions_screener=sanctions_screener).evaluate(
+        xml_input=build_pain001(canonical_transfer),
+        sender_profile=profile,
+        recipient_profile=recipient_profile,
+    )
+    assert result.outcome == GuardrailOutcome.REJECTED
+    assert result.cited_rules == ["LIMIT_TABLE_UNAVAILABLE"]

@@ -12,7 +12,7 @@ from datetime import date
 from enum import StrEnum
 from typing import Protocol
 
-from ubunturemit_domain import Transfer
+from ubunturemit_domain import CurrencyCode, Transfer
 from ubunturemit_messaging.pain001 import parse_pain001
 from ubunturemit_messaging.validate import validate_pain001_message
 
@@ -32,8 +32,10 @@ class SenderProfile:
     kyc_tier: str  # "L1", "L2", "L3"
     country_of_residence: str
     is_pep: bool
-    prior_transfers_30d_count: int = 0
-    prior_transfers_30d_minor_units: int = 0
+    # No defaults: a zero is a claim about the sender's history (the SDA cumulative check
+    # reads it), so the caller states it.
+    prior_transfers_30d_count: int
+    prior_transfers_30d_minor_units: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -41,7 +43,7 @@ class RecipientProfile:
     """Recipient profile for compliance and corridor evaluation."""
 
     country_of_residence: str
-    account_age_days: int = 0
+    account_age_days: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -135,6 +137,7 @@ ENTRY_GATE_RULES: tuple[str, ...] = (
     "FICA_TIER_LIMIT",
     "SARB_EXCON_LIMIT_EXCEEDED",
     "SARB_EXCON_SDA_CAP_EXCEEDED",
+    "LIMIT_TABLE_UNAVAILABLE",
 )
 
 # SARB EXCON & FICA Tier limits in ZAR minor units (100 cents = 1 ZAR)
@@ -225,8 +228,24 @@ class EntryGuardrail:
                 transfer=transfer,
             )
 
+        # The limit tables below are SARB figures in ZAR minor units. A transfer sent in
+        # another currency, or a tier the table does not name, has no limit this gate can
+        # apply -- so it is refused, never compared against a table that does not fit it.
+        if transfer.quote.send.currency != CurrencyCode.ZAR or (
+            sender_profile.kyc_tier not in _TIER_SINGLE_LIMITS
+        ):
+            return EntryGuardrailResult(
+                outcome=GuardrailOutcome.REJECTED,
+                stage="LIMITS",
+                cited_rules=["LIMIT_TABLE_UNAVAILABLE"],
+                rejection_reason=(
+                    f"No limit table for a {transfer.quote.send.currency} transfer by KYC tier "
+                    f"'{sender_profile.kyc_tier}'; the gate holds ZAR limits for L1-L3 only."
+                ),
+            )
+
         # 5. KYC Tier Single Transfer Limit
-        tier_limit = _TIER_SINGLE_LIMITS.get(sender_profile.kyc_tier, _TIER_SINGLE_LIMITS["L1"])
+        tier_limit = _TIER_SINGLE_LIMITS[sender_profile.kyc_tier]
         if send_amount_minor > tier_limit:
             return EntryGuardrailResult(
                 outcome=GuardrailOutcome.REJECTED,

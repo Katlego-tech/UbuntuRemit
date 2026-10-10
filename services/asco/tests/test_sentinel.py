@@ -141,3 +141,21 @@ def test_sentinel_verdict_missing_risk_score_escalates(
     verdict, _, _ = sentinel.assess(sample_input)
 
     assert verdict.outcome == VerdictOutcome.ESCALATE
+
+
+def test_sentinel_unknown_forbidden_rail_is_not_dropped(
+    sample_input: ComplianceAssessmentInput,
+) -> None:
+    """'swift' (lowercase) is not a rail: re-asked, then ESCALATE -- never a lifted constraint."""
+    reply = json.dumps(
+        {
+            "outcome": "PASS",
+            "riskScore": 0.1,
+            "citedRules": ["FICA s21"],
+            "rationale": "Forbids a rail by an unknown name.",
+            "constraints": {"forbiddenRails": ["swift"]},
+        }
+    )
+    sentinel = ComplianceSentinel(llm_client=MockLLMClient([reply, reply]))
+    verdict, _, _ = sentinel.assess(sample_input)
+    assert verdict.outcome == VerdictOutcome.ESCALATE

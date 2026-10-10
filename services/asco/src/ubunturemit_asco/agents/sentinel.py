@@ -176,11 +176,9 @@ class ComplianceSentinel:
         rationale = data["rationale"]
 
         constraints_data = data.get("constraints", {})
-        forbidden_rails = [
-            SettlementRail(r)
-            for r in constraints_data.get("forbiddenRails", [])
-            if r in SettlementRail._value2member_map_
-        ]
+        # An unknown rail name raises (re-ask, then ESCALATE) rather than being dropped:
+        # dropping it would quietly lift a constraint the model stated.
+        forbidden_rails = [SettlementRail(r) for r in constraints_data.get("forbiddenRails", [])]
         max_sec = constraints_data.get("maxSettlementSeconds")
         max_sec_dec = Decimal(str(max_sec)) if max_sec is not None else None
         constraints = ComplianceConstraints(

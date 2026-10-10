@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Protocol
 
-from ubunturemit_asco.agents.sentinel import ComplianceSentinel, InferenceTimeoutError
+from ubunturemit_asco.agents.sentinel import ComplianceSentinel
 from ubunturemit_asco.agents.strategist import LiquidityStrategist
 from ubunturemit_asco.guardrails.exit import ExitValidator
 from ubunturemit_asco.models import (
@@ -172,19 +172,21 @@ class NegotiationCoordinator:
 
         while exchanges < MAX_NEGOTIATION_EXCHANGES:
             exchanges += 1
-            req_input = LiquidityRequestInput(
-                transfer_id=current_transfer.id,
-                corridor_source=current_transfer.quote.send.currency,
-                corridor_target=current_transfer.quote.recipient_receives.currency,
-                amount=current_transfer.quote.send,
-                rail_quotes=rail_quotes,
-                constraints=active_constraints,
-            )
             try:
+                req_input = LiquidityRequestInput(
+                    transfer_id=current_transfer.id,
+                    corridor_source=current_transfer.quote.send.currency,
+                    corridor_target=current_transfer.quote.recipient_receives.currency,
+                    amount=current_transfer.quote.send,
+                    rail_quotes=rail_quotes,
+                    constraints=active_constraints,
+                )
                 proposal, ls_thought, ls_action = self._ls.propose(req_input)
-            except (InferenceTimeoutError, ValueError, KeyError) as err:
-                # Fail closed, as the Sentinel does: a Strategist that timed out, or
-                # could not produce a valid proposal from the rails offered, escalates.
+            except Exception as err:  # noqa: BLE001 -- every failure here must escalate
+                # Fail closed, as the Sentinel does: no rails to offer, a timeout, or output
+                # that could not be parsed into a valid proposal -- whatever the exception
+                # type -- escalates. Nothing here reaches the audit sink, so an audit failure
+                # still propagates and refuses the transfer.
                 _record(
                     actor="orchestrator",
                     thought="Liquidity Strategist produced no valid proposal",
