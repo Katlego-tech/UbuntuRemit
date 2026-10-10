@@ -64,7 +64,7 @@ UbuntuRemit/
 │   ├── audit/                     ✅ append-only audit store (SQLite/Postgres) & Kafka asco.audit consumer (T050-T051)
 │   └── rails/                     ✅ Ripple, PAPSS, SWIFT adapters & bounded retry router (T052-T055)
 ├── tests/                         ✅ workspace integration and hardening suites (Phase 6)
-│   └── hardening/                 ✅ determinism 50x harness, FP8/FP4 benchmarks, concurrent latency
+│   └── hardening/                 🔄 determinism + concurrency harnesses over mocked models; real runs (T060-T062) blocked on the MI300X
 └── docker-compose.yml             ✅ Kafka 4.3.1 + Postgres 18.4 + gateway/messaging/asco/audit/rails service definitions
 ```
 
