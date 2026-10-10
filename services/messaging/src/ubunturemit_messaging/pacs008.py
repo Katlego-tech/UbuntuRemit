@@ -160,7 +160,7 @@ def parse_pacs008(xml_input: str | bytes) -> Transfer:
 
     expected_tag = f"{{{PACS008_NS}}}Document"
     if root.tag != expected_tag:
-        actual_ns = root.tag.split("}")[0].lstrip("{") if "}" in root.tag else ""
+        actual_ns = etree.QName(root).namespace or ""
         if actual_ns != PACS008_NS:
             raise ValueError(
                 f"Unexpected namespace '{actual_ns}' in pacs.008. Expected '{PACS008_NS}'"

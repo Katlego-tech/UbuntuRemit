@@ -46,12 +46,12 @@ while read -r local_ref local_sha remote_ref remote_sha; do
       base=""
     done
     if [ -n "$base" ]; then
-      git diff --name-only --diff-filter=ACM "$base..$local_sha" >> "$changed" 2>/dev/null
+      git -c core.quotePath=false diff --name-only --diff-filter=ACM "$base..$local_sha" >> "$changed" 2>/dev/null
     else
-      git ls-tree -r --name-only "$local_sha" >> "$changed" 2>/dev/null
+      git -c core.quotePath=false ls-tree -r --name-only "$local_sha" >> "$changed" 2>/dev/null
     fi
   else
-    git diff --name-only --diff-filter=ACM "$remote_sha..$local_sha" >> "$changed" 2>/dev/null
+    git -c core.quotePath=false diff --name-only --diff-filter=ACM "$remote_sha..$local_sha" >> "$changed" 2>/dev/null
   fi
 done <<EOF
 $refs

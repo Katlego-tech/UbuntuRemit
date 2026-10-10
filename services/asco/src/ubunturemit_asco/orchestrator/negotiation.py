@@ -4,7 +4,7 @@ Coordinates the negotiation between Compliance Sentinel and Liquidity Strategist
 bounded strictly at 3 exchanges, with fail-closed error handling and audit logging.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Protocol
 
@@ -52,7 +52,7 @@ class NegotiationResult:
     outcome: str  # "SETTLING", "PENDING_REVIEW", "REJECTED", "FAILED"
     pacs008_xml: str | None = None
     proposal: LiquidityProposal | None = None
-    audit_records: list[AuditRecord] = ()
+    audit_records: list[AuditRecord] = field(default_factory=list)
     reason: str = ""
 
 

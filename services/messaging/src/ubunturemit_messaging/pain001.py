@@ -194,7 +194,7 @@ def parse_pain001(xml_input: str | bytes) -> Transfer:
 
     expected_tag = f"{{{PAIN001_NS}}}Document"
     if root.tag != expected_tag:
-        actual_ns = root.tag.split("}")[0].lstrip("{") if "}" in root.tag else ""
+        actual_ns = etree.QName(root).namespace or ""
         if actual_ns != PAIN001_NS:
             raise ValueError(
                 f"Unexpected namespace '{actual_ns}' in pain.001. Expected '{PAIN001_NS}'"
