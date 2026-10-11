@@ -1,0 +1,22 @@
+# Inference client: the LLMClient both ASCO agents call vLLM through.
+#
+# Bounded context: model inference. Depends on `services/asco` for the LLMClient
+# protocol and the InferenceTimeoutError the agents catch (docs/design/inference.md §3).
+# The vLLM servers themselves are deployment, not code here (T079).
+
+[project]
+name = "ubunturemit-inference"
+version = "0.0.0"
+description = "vLLM chat client with schema-constrained output for the ASCO agents."
+requires-python = "==3.13.*"
+dependencies = [
+    "httpx==0.28.1",
+    "ubunturemit-asco",
+]
+
+[build-system]
+requires = ["hatchling==1.31.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ubunturemit_inference"]

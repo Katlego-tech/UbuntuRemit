@@ -181,7 +181,7 @@ constructor argument with no default.
 
 ## 7. How this is verified
 
-- **T078 (buildable now):** unit tests against `httpx.MockTransport` — the request body carries the
+- **T078 (built):** unit tests against `httpx.MockTransport` — the request body carries the
   `response_format` envelope with the schema, `temperature 0`, the seed and `max_tokens`; a read
   timeout and a connect timeout each raise `ubunturemit_asco.InferenceTimeoutError` (asserted as
   that exact class); a refused connection, a 500, an empty `choices`, missing `content`,

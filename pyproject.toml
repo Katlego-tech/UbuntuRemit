@@ -24,6 +24,7 @@ dev = [
     "ubunturemit-audit",
     "ubunturemit-rails",
     "ubunturemit-gateway",
+    "ubunturemit-inference",
     "pyright==1.1.414",
     "types-lxml==2026.2.16",
 ]
@@ -44,6 +45,7 @@ ubunturemit-asco = { workspace = true }
 ubunturemit-audit = { workspace = true }
 ubunturemit-rails = { workspace = true }
 ubunturemit-gateway = { workspace = true }
+ubunturemit-inference = { workspace = true }
 
 [tool.ruff]
 target-version = "py313"

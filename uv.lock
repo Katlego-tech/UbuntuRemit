@@ -9,6 +9,7 @@ members = [
     "ubunturemit-audit",
     "ubunturemit-domain",
     "ubunturemit-gateway",
+    "ubunturemit-inference",
     "ubunturemit-messaging",
     "ubunturemit-rails",
 ]
@@ -531,6 +532,7 @@ dev = [
     { name = "ubunturemit-audit" },
     { name = "ubunturemit-domain" },
     { name = "ubunturemit-gateway" },
+    { name = "ubunturemit-inference" },
     { name = "ubunturemit-messaging" },
     { name = "ubunturemit-rails" },
 ]
@@ -549,6 +551,7 @@ dev = [
     { name = "ubunturemit-audit", editable = "services/audit" },
     { name = "ubunturemit-domain", editable = "libs/domain" },
     { name = "ubunturemit-gateway", editable = "services/gateway" },
+    { name = "ubunturemit-inference", editable = "services/inference" },
     { name = "ubunturemit-messaging", editable = "services/messaging" },
     { name = "ubunturemit-rails", editable = "services/rails" },
 ]
@@ -615,6 +618,21 @@ requires-dist = [
     { name = "ubunturemit-messaging", editable = "services/messaging" },
     { name = "ubunturemit-rails", editable = "services/rails" },
     { name = "uvicorn", specifier = ">=0.30.0" },
+]
+
+[[package]]
+name = "ubunturemit-inference"
+version = "0.0.0"
+source = { editable = "services/inference" }
+dependencies = [
+    { name = "httpx" },
+    { name = "ubunturemit-asco" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx", specifier = "==0.28.1" },
+    { name = "ubunturemit-asco", editable = "services/asco" },
 ]
 
 [[package]]
