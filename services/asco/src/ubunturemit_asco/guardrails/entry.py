@@ -6,6 +6,7 @@ Hard Gates (deterministic, zero LLM):
 3. Corridor support and KYC/SDA limits (SARB EXCON B.4, FICA Tier limits).
 """
 
+import unicodedata
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import date
@@ -86,6 +87,18 @@ class SanctionsScreener(Protocol):
         ...
 
 
+def _normalise(name: str) -> str:
+    """NFKC, invisible format characters dropped, whitespace collapsed, case-folded.
+
+    Applied to the list and the party alike, so it never weakens a match. Without the
+    first two steps a zero-width space or a decomposed accent typed into a name slips past
+    an exact match. Exact matching after this; fuzzy matching is T077 (asco-orchestrator §3.1).
+    """
+    composed = unicodedata.normalize("NFKC", name)
+    visible = "".join(c for c in composed if unicodedata.category(c) != "Cf")
+    return " ".join(visible.split()).casefold()
+
+
 class StaticSanctionsScreener:
     """Deterministic in-memory screener over a list loaded from a named, dated source."""
 
@@ -96,7 +109,7 @@ class StaticSanctionsScreener:
         sanctioned_bics: Iterable[str] = (),
     ) -> None:
         self._source = source
-        self._names = {n.strip().upper() for n in sanctioned_names if n.strip()}
+        self._names = {_normalise(n) for n in sanctioned_names if n.strip()}
         self._bics = {b.strip().upper() for b in sanctioned_bics if b.strip()}
         if not self._names and not self._bics:
             raise EmptySanctionsListError(
@@ -108,7 +121,7 @@ class StaticSanctionsScreener:
         return self._source
 
     def is_sanctioned(self, name: str, bic: str = "") -> bool:
-        if name.strip().upper() in self._names:
+        if _normalise(name) in self._names:
             return True
         if bic and bic.strip().upper() in self._bics:
             return True

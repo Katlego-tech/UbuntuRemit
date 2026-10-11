@@ -58,6 +58,7 @@ class FastMockLLMClient:
                 "rail": "RIPPLE",
                 "totalCost": {
                     "minorUnits": 0,
+                    "currency": "ZAR",
                 },
                 "estimatedSeconds": 3.2,
                 "rationale": "Instant XRPL bridge.",

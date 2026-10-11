@@ -87,3 +87,20 @@ def test_liquidity_strategist_missing_cost_is_never_defaulted(
 
     with pytest.raises(KeyError):
         strategist.propose(sample_request)
+
+
+def test_liquidity_strategist_refuses_a_cost_in_another_currency(
+    sample_request: LiquidityRequestInput,
+) -> None:
+    """A KES cost on a ZAR transfer is not relabelled ZAR: re-asked, then refused."""
+    wrong = json.dumps(
+        {
+            "rail": "RIPPLE",
+            "totalCost": {"minorUnits": 1800, "currency": "KES"},
+            "estimatedSeconds": 3.2,
+            "rationale": "Cost stated in the wrong currency.",
+        }
+    )
+    strategist = LiquidityStrategist(llm_client=MockLLMClient([wrong, wrong]))
+    with pytest.raises(ValueError, match="currency"):
+        strategist.propose(sample_request)
