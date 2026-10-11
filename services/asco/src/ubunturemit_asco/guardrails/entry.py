@@ -86,6 +86,11 @@ class SanctionsScreener(Protocol):
         ...
 
 
+def _normalise(name: str) -> str:
+    """Case-folded, whitespace collapsed -- exact matching after this; see §3.1 and T077."""
+    return " ".join(name.split()).casefold()
+
+
 class StaticSanctionsScreener:
     """Deterministic in-memory screener over a list loaded from a named, dated source."""
 
@@ -96,7 +101,7 @@ class StaticSanctionsScreener:
         sanctioned_bics: Iterable[str] = (),
     ) -> None:
         self._source = source
-        self._names = {n.strip().upper() for n in sanctioned_names if n.strip()}
+        self._names = {_normalise(n) for n in sanctioned_names if n.strip()}
         self._bics = {b.strip().upper() for b in sanctioned_bics if b.strip()}
         if not self._names and not self._bics:
             raise EmptySanctionsListError(
@@ -108,7 +113,7 @@ class StaticSanctionsScreener:
         return self._source
 
     def is_sanctioned(self, name: str, bic: str = "") -> bool:
-        if name.strip().upper() in self._names:
+        if _normalise(name) in self._names:
             return True
         if bic and bic.strip().upper() in self._bics:
             return True

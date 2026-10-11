@@ -82,6 +82,39 @@ to permit or forbid a settlement. Gold nodes are LLMs: they *suggest*, they *ran
 it is the mitigation for the top-line risk in that document's register (non-deterministic output →
 regulatory fines).
 
+### 3.1 The sanctions list the entry gate screens against (T041a, T075)
+
+The gate holds no list of its own: it is given a `SanctionsScreener` whose list carries a
+`SanctionsListSource(name, published)`, and every SANCTIONS rejection cites that source. The first
+real source is the **UN Security Council Consolidated List**, published as XML at
+`https://scsanctions.un.org/resources/xml/en/consolidated.xml`.
+
+```mermaid
+flowchart LR
+    X["consolidated.xml<br/>(fetched by operations)"] --> L["load_un_consolidated_list()"]
+    L -->|"name = UN Security Council Consolidated List<br/>published = root @dateGenerated (UTC date)"| S[StaticSanctionsScreener]
+    S --> G[EntryGuardrail]
+```
+
+What the loader reads, verified against the published file (2026-10-10: 736 individuals, 274
+entities):
+
+| Element | Becomes |
+| --- | --- |
+| `CONSOLIDATED_LIST/@dateGenerated` | `SanctionsListSource.published` — required; a list with no date is refused |
+| `INDIVIDUAL/FIRST_NAME … FOURTH_NAME` | one name: the present parts joined by single spaces |
+| `INDIVIDUAL_ALIAS/ALIAS_NAME` | a name, **every quality** (`Good` and `Low`) — a weak alias still matches |
+| `INDIVIDUAL/NAME_ORIGINAL_SCRIPT`, `ENTITY/NAME_ORIGINAL_SCRIPT` | a name |
+| `ENTITY/FIRST_NAME`, `ENTITY_ALIAS/ALIAS_NAME` (`a.k.a.` and `f.k.a.`) | a name |
+
+- **The loader never fetches.** It parses bytes it is handed, so what was screened against is
+  exactly the file operations fetched and dated. Parsing is hardened (`resolve_entities=False`,
+  `no_network=True`): the file comes from outside the institution.
+- **Matching is exact after normalisation** — case-folded, whitespace collapsed. That is weaker than
+  production screening, which matches transliterations and near-misses. Choosing a fuzzy-match
+  policy and its threshold is a compliance decision, not a coding one: **T077**, blocked on it.
+- The list carries no BICs, so a UN-loaded screener screens names only.
+
 ## 4. Negotiation flow
 
 ```mermaid
