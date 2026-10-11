@@ -101,7 +101,7 @@ def parse_bah(xml_input: str | bytes) -> BusinessApplicationHeader:
     # Check root element and namespace
     expected_tag = f"{{{HEAD_001_001_02_NS}}}AppHdr"
     if root.tag != expected_tag:
-        actual_ns = root.tag.split("}")[0].lstrip("{") if "}" in root.tag else ""
+        actual_ns = etree.QName(root).namespace or ""
         if actual_ns != HEAD_001_001_02_NS:
             raise ValueError(
                 f"Unexpected namespace '{actual_ns}' in AppHdr. Expected '{HEAD_001_001_02_NS}'"
