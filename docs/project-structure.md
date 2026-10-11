@@ -43,8 +43,10 @@ UbuntuRemit/
 ├── uv.lock                        ✅ every dependency pinned, committed
 ├── .python-version                ✅ 3.13.14 exactly
 ├── scripts/gate.sh                ✅ THE gate — every check lives here, and only here
+├── scripts/prune-branches.sh      ✅ deletes local branches once their PR has merged into main
 ├── install-hooks.sh               ✅ run once per clone; wires the hook and self-tests it
 ├── .githooks/pre-push             ✅ branch protection; computes the change set, runs gate.sh
+├── .githooks/post-merge           ✅ runs prune-branches.sh after every `git pull` on main
 ├── .github/workflows/ci.yml       ✅ T008 — runs the same gate.sh, server-side and unbypassable
 ├── apps/
 │   └── web/                       ✅ static HTML — the Stitch export, no build step

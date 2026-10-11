@@ -9,10 +9,9 @@
 # has drifted from the local gate teaches people to ignore the local gate.
 #
 # Customized for this project: the toolchain below matches PLAN.md's Technical Context.
-# Action versions are pinned to exact releases verified on 2026-08-06, not to floating
-# majors -- architecture-defaults.md section 5 asks for exact pins, and `@v4` is not one.
-# There is no Node step: this project has no Node anywhere (apps/web is static HTML with
-# no build step), so installing a runtime nothing uses would only slow the gate down.
+# Actions are pinned by commit SHA, as the Cultivation kit pins them (2026-10 revision) --
+# a tag can be moved, a SHA cannot. Node is installed although the project has no Node
+# code: the gate's duplication check runs jscpd through npx.
 
 name: CI
 
@@ -42,25 +41,50 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           # The placeholder and secret sweeps need the commits being introduced,
           # not just the tip.
           fetch-depth: 0
 
       # --- toolchain -------------------------------------------------------
-      # .python-version pins the exact patch (3.13.14) and uv.lock pins every
-      # dependency, so setup-uv needs no version literal of its own here.
+      # .python-version pins the exact patch and uv.lock pins every dependency;
+      # `uv sync` reads both, so no Python version literal is repeated here.
+      # setup-uv stopped publishing major tags in v8, so it is pinned to a full release.
       - name: Set up uv
-        uses: astral-sh/setup-uv@v9.0.0
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4  # v10.1.0
         with:
-          python-version-file: .python-version
           enable-cache: true
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: '22'
+          package-manager-cache: false
+
+      # The gate's vulnerability scan checks uv.lock against the OSV database.
+      # A pinned release, verified against its published checksum before it runs.
+      - name: Set up osv-scanner
+        env:
+          OSV_SCANNER_VERSION: v2.5.1
+        run: |
+          cd "$RUNNER_TEMP"
+          base="https://github.com/google/osv-scanner/releases/download/$OSV_SCANNER_VERSION"
+          curl -sSfLO "$base/osv-scanner_linux_amd64"
+          curl -sSfLO "$base/osv-scanner_SHA256SUMS"
+          grep ' osv-scanner_linux_amd64$' osv-scanner_SHA256SUMS | sha256sum -c -
+          mkdir -p "$HOME/.local/bin"
+          install -m 0755 osv-scanner_linux_amd64 "$HOME/.local/bin/osv-scanner"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       # --- dependencies ----------------------------------------------------
       # gate.sh treats "dependencies not installed" as a failure, so this step is
       # what makes it able to run rather than able to complain. --frozen with no
       # fallback: if uv.lock has drifted from pyproject.toml, that is the finding.
+      # Not the kit's `gate.sh --install-deps`: that runs `uv sync` in every
+      # services/* directory, and in a uv workspace each of those re-syncs the one
+      # shared .venv down to that member's dependencies -- the last one wins and the
+      # root checks then run without the rest. One sync at the root installs all.
       - name: Install Python dependencies
         run: uv sync --frozen
 
@@ -70,14 +94,14 @@ jobs:
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             base="${{ github.event.pull_request.base.sha }}"
             head="${{ github.event.pull_request.head.sha }}"
-            git diff --name-only --diff-filter=ACM "$base..$head" > /tmp/changed.txt
+            git -c core.quotePath=false diff --name-only --diff-filter=ACM "$base..$head" > /tmp/changed.txt
           else
             before="${{ github.event.before }}"
             if [ -n "$before" ] && [ "$before" != "0000000000000000000000000000000000000000" ] \
                && git cat-file -e "$before^{commit}" 2>/dev/null; then
-              git diff --name-only --diff-filter=ACM "$before..${{ github.sha }}" > /tmp/changed.txt
+              git -c core.quotePath=false diff --name-only --diff-filter=ACM "$before..${{ github.sha }}" > /tmp/changed.txt
             else
-              git ls-tree -r --name-only "${{ github.sha }}" > /tmp/changed.txt
+              git -c core.quotePath=false ls-tree -r --name-only "${{ github.sha }}" > /tmp/changed.txt
             fi
           fi
           echo "$(wc -l < /tmp/changed.txt) file(s) in the change set"

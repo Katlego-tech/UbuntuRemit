@@ -49,7 +49,7 @@ def parse_camt053(xml_input: str | bytes) -> list[StatementEntry]:
 
     expected_tag = f"{{{CAMT053_NS}}}Document"
     if root.tag != expected_tag:
-        actual_ns = root.tag.split("}")[0].lstrip("{") if "}" in root.tag else ""
+        actual_ns = etree.QName(root).namespace or ""
         if actual_ns != CAMT053_NS:
             raise ValueError(
                 f"Unexpected namespace '{actual_ns}' in camt.053. Expected '{CAMT053_NS}'"
