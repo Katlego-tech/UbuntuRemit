@@ -64,7 +64,7 @@ UbuntuRemit/
 │   ├── messaging/                 ✅ ISO 20022 message builders/parsers and 3-tier validation (T028-T039)
 │   ├── asco/                      ✅ multi-agent negotiation loop, entry/exit guardrails, orchestrator (T040-T047)
 │   ├── audit/                     ✅ append-only audit store (SQLite/Postgres) & Kafka asco.audit consumer (T050-T051)
-│   └── rails/                     ✅ Ripple, PAPSS, SWIFT adapters & bounded retry router (T052-T055)
+│   └── rails/                     🔄 bounded retry router (T055); Ripple/PAPSS/SWIFT adapters blocked (T052-T054)
 ├── tests/                         ✅ workspace integration and hardening suites (Phase 6)
 │   └── hardening/                 🔄 determinism + concurrency harnesses over mocked models; real runs (T060-T062) blocked on the MI300X
 └── docker-compose.yml             ✅ Kafka 4.3.1 + Postgres 18.4 + gateway/messaging/asco/audit/rails service definitions
@@ -176,7 +176,8 @@ docker compose down    # add -v to discard the volumes
 
 `libs/domain`, `services/messaging`, `services/asco`, `services/audit`, and `services/rails` **are** built and verified
 under 249 tests spanning property tests, contract validation, state machine exhaustiveness, ISO 20022 schemas,
-multi-agent negotiation loops, append-only immutability triggers, and rail adapters with bounded fallback retries.
+multi-agent negotiation loops, append-only immutability triggers, and the bounded fallback-retry router.
+The rail adapters themselves are not built (T052-T054, blocked on sandbox credentials).
 The gate checks 15 verification targets across all 5 packages.
 
 `apps/web` is real and serves: the pages load the approved Stitch export. T024 self-hosts external

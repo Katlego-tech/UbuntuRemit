@@ -1,25 +1,23 @@
-"""UbuntuRemit Rails Service."""
+"""UbuntuRemit Rails Service.
+
+No rail adapter ships yet: T052-T054 (Ripple, PAPSS, SWIFT) are blocked on sandbox
+credentials. A RailRouter is built from adapters it is given, never from defaults.
+"""
 
 from ubunturemit_rails.base import (
     RailAdapter,
     RailStatus,
     RailSubmissionResult,
 )
-from ubunturemit_rails.papss import PapssRailAdapter
-from ubunturemit_rails.ripple import RippleRailAdapter
 from ubunturemit_rails.router import (
     RailRouter,
     SettlementExhaustionError,
 )
-from ubunturemit_rails.swift import SwiftRailAdapter
 
 __all__ = [
-    "PapssRailAdapter",
     "RailAdapter",
     "RailRouter",
     "RailStatus",
     "RailSubmissionResult",
-    "RippleRailAdapter",
     "SettlementExhaustionError",
-    "SwiftRailAdapter",
 ]

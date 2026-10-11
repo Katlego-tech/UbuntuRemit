@@ -8,9 +8,19 @@ import json
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
-from ubunturemit_asco import SanctionsListSource, StaticSanctionsScreener
-from ubunturemit_domain import Corridor, CurrencyCode, FxQuote, Money, RateSource, TransferQuote
+from ubunturemit_asco import RailQuote, SanctionsListSource, StaticSanctionsScreener
+from ubunturemit_domain import (
+    Corridor,
+    CurrencyCode,
+    FxQuote,
+    Money,
+    RateSource,
+    SettlementRail,
+    Transfer,
+    TransferQuote,
+)
 from ubunturemit_gateway.dependencies import GatewayDependencies, UnsupportedCorridorError
+from ubunturemit_rails import RailRouter, RailStatus, RailSubmissionResult
 
 TEST_RATE = Decimal("0.8500")
 TEST_FEE_MINOR_UNITS = 1500
@@ -51,6 +61,27 @@ class ScriptedTestLLMClient:
         return self._text
 
 
+class SimulatedTestRail:
+    """A PAPSS stand-in: quotes the terms it is given and reports a SIMULATED settlement."""
+
+    rail = SettlementRail.PAPSS
+
+    def __init__(self, fail: bool = False) -> None:
+        self._fail = fail
+
+    def get_quote(self, corridor: Corridor, amount: Money) -> RailQuote:
+        return RailQuote(self.rail, 1200, 8, Decimal("11"))
+
+    def submit_settlement(self, pacs008_xml: str, transfer: Transfer) -> RailSubmissionResult:
+        return RailSubmissionResult(
+            rail=self.rail,
+            status=RailStatus.FAILED if self._fail else RailStatus.DELIVERED,
+            settlement_reference="SIMULATED-TEST",
+            fee=Money(minor_units=1200, currency=transfer.quote.send.currency),
+            settlement_seconds=Decimal("11"),
+        )
+
+
 def configured_dependencies() -> GatewayDependencies:
     return GatewayDependencies(
         quote_source=FixedRateTestQuoteSource(),
@@ -74,4 +105,5 @@ def configured_dependencies() -> GatewayDependencies:
         sanctions_screener=StaticSanctionsScreener(
             source=TEST_LIST, sanctioned_names=["Listed Test Person"]
         ),
+        rail_router=RailRouter(adapters={SettlementRail.PAPSS: SimulatedTestRail()}),
     )

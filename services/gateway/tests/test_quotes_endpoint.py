@@ -12,6 +12,7 @@ def test_quote_without_a_rate_source_is_refused() -> None:
     resp = unconfigured.get("/api/fx/quote?source=ZAR&target=GHS&amount=500000")
     assert resp.status_code == 503
     assert "quote_source" in resp.json()["detail"]
+    assert "rail_router" in resp.json()["detail"]
 
 
 def test_quote_comes_from_the_rate_source() -> None:
@@ -22,6 +23,7 @@ def test_quote_comes_from_the_rate_source() -> None:
     assert data["recipient_receives_minor_units"] == 425000
     assert data["exchange_rate"] == "0.8500"
     assert data["fee_minor_units"] == TEST_FEE_MINOR_UNITS
+    assert data["available_rails"] == ["PAPSS"]
 
 
 def test_quote_unsupported_corridor() -> None:

@@ -3,6 +3,7 @@ Docs: domain-model.md §4 & TASKS.md T055.
 """
 
 import dataclasses
+from collections.abc import Mapping
 
 from ubunturemit_asco.models import RailQuote
 from ubunturemit_asco.orchestrator.master import MasterOrchestrator, RetryBudgetExceededError
@@ -15,9 +16,6 @@ from ubunturemit_domain import (
 )
 
 from ubunturemit_rails.base import RailAdapter, RailStatus, RailSubmissionResult
-from ubunturemit_rails.papss import PapssRailAdapter
-from ubunturemit_rails.ripple import RippleRailAdapter
-from ubunturemit_rails.swift import SwiftRailAdapter
 
 
 class SettlementExhaustionError(Exception):
@@ -27,15 +25,12 @@ class SettlementExhaustionError(Exception):
 class RailRouter:
     """Routes settlements across registered rail adapters and manages bounded retries on failure."""
 
-    def __init__(self, adapters: dict[SettlementRail, RailAdapter] | None = None) -> None:
-        if adapters is not None:
-            self._adapters = dict(adapters)
-        else:
-            self._adapters = {
-                SettlementRail.RIPPLE: RippleRailAdapter(),
-                SettlementRail.PAPSS: PapssRailAdapter(),
-                SettlementRail.SWIFT: SwiftRailAdapter(),
-            }
+    def __init__(self, adapters: Mapping[SettlementRail, RailAdapter]) -> None:
+        # No defaults: the adapters a router used to build for itself returned invented
+        # quotes and invented settlement confirmations (T052-T054).
+        if not adapters:
+            raise ValueError("RailRouter needs at least one rail adapter.")
+        self._adapters = dict(adapters)
 
     def get_quotes(self, corridor: Corridor, amount: Money) -> list[RailQuote]:
         """Collect live quotes from all eligible rail adapters."""
@@ -57,6 +52,11 @@ class RailRouter:
         orchestrator: MasterOrchestrator,
     ) -> tuple[Transfer, RailSubmissionResult, list[RailSubmissionResult]]:
         """Submit settlement with automatic fallback on alternate rails, bounded at 2 retries."""
+        # The transfer was priced and approved for the preferred rail. With no adapter for
+        # it, settling elsewhere would carry another rail's terms nobody approved: refuse.
+        if preferred_rail not in self._adapters:
+            raise ValueError(f"No adapter registered for the approved rail {preferred_rail}.")
+
         attempts: list[RailSubmissionResult] = []
         current_transfer = transfer
 
@@ -67,12 +67,14 @@ class RailRouter:
             for r in [SettlementRail.RIPPLE, SettlementRail.PAPSS, SettlementRail.SWIFT]
             if r != preferred_rail and (r != SettlementRail.PAPSS or corridor.papss_eligible)
         ]
-        all_candidate_rails = [preferred_rail] + alternate_candidates
+        # Only rails with a registered adapter are candidates. Skipping one mid-loop
+        # used to count a retry against the budget for a rail never attempted.
+        all_candidate_rails = [
+            r for r in [preferred_rail, *alternate_candidates] if r in self._adapters
+        ]
 
         for attempt_index, rail_candidate in enumerate(all_candidate_rails):
-            adapter = self._adapters.get(rail_candidate)
-            if adapter is None:
-                continue
+            adapter = self._adapters[rail_candidate]
 
             result = adapter.submit_settlement(pacs008_xml, current_transfer)
             attempts.append(result)

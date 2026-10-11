@@ -38,7 +38,7 @@ from ubunturemit_gateway.dependencies import (
 )
 from ubunturemit_gateway.models import TransferInitiationRequest, TransferResponse
 from ubunturemit_messaging import build_pacs008, build_pain001
-from ubunturemit_rails import RailRouter
+from ubunturemit_rails import SettlementExhaustionError
 
 router = APIRouter(prefix="/api/transfers", tags=["Transfers"])
 
@@ -53,11 +53,13 @@ def initiate_transfer(
     # assessed by real sources, or refused -- never part-way on a stand-in.
     quote_source, screener = deps.quote_source, deps.sanctions_screener
     sentinel_client, strategist_client = deps.sentinel_client, deps.strategist_client
+    rail_router = deps.rail_router
     if (
         quote_source is None
         or screener is None
         or sentinel_client is None
         or strategist_client is None
+        or rail_router is None
     ):
         raise not_configured(*deps.missing())
 
@@ -140,7 +142,6 @@ def initiate_transfer(
         )
 
     # 2. Multi-agent negotiation loop
-    rail_router = RailRouter()
     rail_quotes = rail_router.get_quotes(corridor, send_money)
 
     coordinator = NegotiationCoordinator(
@@ -190,12 +191,29 @@ def initiate_transfer(
 
     # 3. Submit settlement to rail router with retry
     pacs_xml = neg_result.pacs008_xml or build_pacs008(neg_result.transfer)
-    settled_transfer, sub_result, _ = rail_router.execute_settlement_with_retry(
-        transfer=neg_result.transfer,
-        pacs008_xml=pacs_xml,
-        preferred_rail=neg_result.proposal.rail,
-        orchestrator=runtime.orchestrator,
-    )
+    try:
+        settled_transfer, sub_result, _ = rail_router.execute_settlement_with_retry(
+            transfer=neg_result.transfer,
+            pacs008_xml=pacs_xml,
+            preferred_rail=neg_result.proposal.rail,
+            orchestrator=runtime.orchestrator,
+        )
+    except SettlementExhaustionError as err:
+        # Every rail failed and the retry budget is spent: a real outcome, stored and
+        # returned like any other -- not a 500 that loses the transfer.
+        return runtime.remember(
+            TransferResponse(
+                transfer_id=str(t_id),
+                reference=ref,
+                status=TransferState.FAILED.value,
+                outcome=TransferState.FAILED.value,
+                selected_rail=None,
+                fee_minor_units=quote.fee.minor_units,
+                settlement_seconds=None,
+                cited_rules=neg_result.verdict.cited_rules if neg_result.verdict else [],
+                reason=str(err),
+            )
+        )
 
     return runtime.remember(
         TransferResponse(
