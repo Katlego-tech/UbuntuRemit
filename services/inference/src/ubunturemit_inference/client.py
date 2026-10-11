@@ -51,7 +51,11 @@ class VllmChatClient:
         self.max_tokens = max_tokens
         # httpx applies timeout_s to each phase (connect, read, write, pool). vLLM answers a
         # non-streaming request in one body, so the read phase is the wait for the model.
-        self._http = httpx.Client(base_url=base_url, timeout=timeout_s, transport=transport)
+        # trust_env=False: the prompt carries KYC and PEP data, so it never follows an
+        # HTTP(S)_PROXY from the environment to somewhere other than base_url.
+        self._http = httpx.Client(
+            base_url=base_url, timeout=timeout_s, transport=transport, trust_env=False
+        )
 
     def request_body(self, prompt: str, system_prompt: str) -> dict[str, Any]:
         return {
@@ -83,7 +87,7 @@ class VllmChatClient:
             raise InferenceTimeoutError(
                 f"{self.model} gave no reply within {self.timeout_s}s ({type(err).__name__})."
             ) from err
-        except httpx.TransportError as err:
+        except httpx.RequestError as err:  # transport errors, and an undecodable body
             raise InferenceResponseError(
                 f"{self.model} unreachable: {type(err).__name__}: {err}"
             ) from err

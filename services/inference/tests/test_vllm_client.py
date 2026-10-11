@@ -17,7 +17,6 @@ from ubunturemit_asco import (
 )
 from ubunturemit_domain import CurrencyCode, Money, PaymentPurpose, SourceOfFunds, TransferId
 from ubunturemit_inference import (
-    CHAT_COMPLETIONS_PATH,
     COMPLIANCE_VERDICT_NAME,
     COMPLIANCE_VERDICT_SCHEMA,
     InferenceResponseError,
@@ -44,14 +43,14 @@ def _client(handler: Callable[[httpx.Request], httpx.Response]) -> VllmChatClien
         model="sentinel-model",
         response_schema=COMPLIANCE_VERDICT_SCHEMA,
         schema_name=COMPLIANCE_VERDICT_NAME,
-        timeout_s=5.0,
+        timeout_s=7.5,  # not httpx's 5 s default, so the test proves this value is applied
         seed=1234,
         max_tokens=1024,
         transport=httpx.MockTransport(handler),
     )
 
 
-def _raising(exc: type[httpx.TransportError]) -> Callable[[httpx.Request], httpx.Response]:
+def _raising(exc: type[httpx.RequestError]) -> Callable[[httpx.Request], httpx.Response]:
     def handler(request: httpx.Request) -> httpx.Response:
         raise exc("simulated", request=request)
 
@@ -69,7 +68,13 @@ def test_request_carries_schema_envelope_temperature_seed_and_max_tokens() -> No
 
     (request,) = seen
     assert request.method == "POST"
-    assert request.url.path == CHAT_COMPLETIONS_PATH
+    assert str(request.url) == "http://inference.internal:8001/v1/chat/completions"
+    assert request.extensions["timeout"] == {
+        "connect": 7.5,
+        "read": 7.5,
+        "write": 7.5,
+        "pool": 7.5,
+    }
     body = json.loads(request.content)
     assert body["model"] == "sentinel-model"
     assert body["messages"] == [
@@ -90,14 +95,16 @@ def test_request_carries_schema_envelope_temperature_seed_and_max_tokens() -> No
 
 
 def test_a_valid_reply_is_returned_byte_for_byte() -> None:
-    odd_but_valid = VALID_VERDICT.replace(", ", ",   ")
+    odd_but_valid = "\n " + VALID_VERDICT.replace(", ", ",   ") + " \n"
     client = _client(lambda _: httpx.Response(200, json=_reply(odd_but_valid)))
     assert client.complete("p", "s") == odd_but_valid
 
 
-@pytest.mark.parametrize("timeout", [httpx.ReadTimeout, httpx.ConnectTimeout, httpx.WriteTimeout])
+@pytest.mark.parametrize(
+    "timeout", [httpx.ReadTimeout, httpx.ConnectTimeout, httpx.WriteTimeout, httpx.PoolTimeout]
+)
 def test_every_timeout_is_ascos_own_inference_timeout_error(
-    timeout: type[httpx.TransportError],
+    timeout: type[httpx.RequestError],
 ) -> None:
     with pytest.raises(ubunturemit_asco.InferenceTimeoutError) as caught:
         _client(_raising(timeout)).complete("p", "s")
@@ -109,7 +116,9 @@ def test_every_timeout_is_ascos_own_inference_timeout_error(
     "handler",
     [
         _raising(httpx.ConnectError),  # connection refused / DNS failure
-        lambda _: httpx.Response(500, text="internal error"),
+        lambda _: httpx.Response(500, json=_reply()),  # a valid body does not rescue a 500
+        lambda _: httpx.Response(202, json=_reply()),
+        _raising(httpx.DecodingError),  # e.g. a corrupt compressed body
         lambda _: httpx.Response(200, text="not json"),
         lambda _: httpx.Response(200, json={"choices": []}),
         lambda _: httpx.Response(200, json={"choices": [{"finish_reason": "stop"}]}),
@@ -120,7 +129,9 @@ def test_every_timeout_is_ascos_own_inference_timeout_error(
     ],
     ids=[
         "refused",
-        "http-500",
+        "http-500-with-valid-body",
+        "http-202-with-valid-body",
+        "undecodable-body",
         "non-json-body",
         "no-choices",
         "no-message",
@@ -155,6 +166,16 @@ def test_an_incomplete_client_refuses_to_exist(overrides: dict[str, object]) -> 
     }
     with pytest.raises(ValueError):
         VllmChatClient(**fields)  # type: ignore[arg-type]
+
+
+def test_the_environment_cannot_route_prompts_through_a_proxy(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Prompts carry KYC and PEP data; an HTTPS_PROXY in the environment must not reroute them."""
+    monkeypatch.setenv("HTTP_PROXY", "http://proxy.example:3128")
+    monkeypatch.setenv("HTTPS_PROXY", "http://proxy.example:3128")
+    client = _client(lambda _: httpx.Response(200, json=_reply()))
+    assert client._http.trust_env is False  # noqa: SLF001
 
 
 # --- through the real agent: the error classes land on the paths §4 draws ---------
