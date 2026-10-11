@@ -67,7 +67,7 @@ UbuntuRemit/
 │   ├── inference/                 🔄 VllmChatClient — schema-constrained vLLM client for both agents (T078); servers blocked (T079)
 │   └── rails/                     🔄 bounded retry router (T055); Ripple/PAPSS/SWIFT adapters blocked (T052-T054)
 ├── tests/                         ✅ workspace integration and hardening suites (Phase 6)
-│   └── hardening/                 ✅ determinism 50x harness, FP8/FP4 benchmarks, concurrent latency
+│   └── hardening/                 🔄 determinism + concurrency harnesses over mocked models; real runs (T060-T062) blocked on the MI300X
 └── docker-compose.yml             ✅ Kafka 4.3.1 + Postgres 18.4 + gateway/messaging/asco/audit/rails service definitions
 ```
 
