@@ -6,7 +6,7 @@ Hard Gates (deterministic, zero LLM):
 3. Corridor support and KYC/SDA limits (SARB EXCON B.4, FICA Tier limits).
 """
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import date
 from enum import StrEnum
@@ -140,24 +140,53 @@ ENTRY_GATE_RULES: tuple[str, ...] = (
     "LIMIT_TABLE_UNAVAILABLE",
 )
 
-# SARB EXCON & FICA Tier limits in ZAR minor units (100 cents = 1 ZAR)
-_TIER_SINGLE_LIMITS: dict[str, int] = {
-    "L1": 500000,  # 5,000.00 ZAR
-    "L2": 5000000,  # 50,000.00 ZAR
-    "L3": 100000000,  # 1,000,000.00 ZAR (SDA annual single limit)
-}
 
-# Maximum Single Discretionary Allowance (SDA) 30d cumulative threshold
-_MAX_SDA_CUMULATIVE_LIMIT: int = 100000000  # 1,000,000.00 ZAR
+class LimitTableError(ValueError):
+    """A limit table with no source, no limits, or a non-positive figure."""
 
-# PEP Enhanced Due Diligence single transaction threshold
-_PEP_ENHANCED_DUE_DILIGENCE_THRESHOLD: int = 5000000  # 50,000.00 ZAR
+
+@dataclass(frozen=True, slots=True)
+class LimitTable:
+    """The KYC/EXCON limits the entry gate applies, as published in a named, dated source.
+
+    No figure lives in code: every limit is loaded from the document that sets it, and a
+    LIMITS rejection cites that document (Non-negotiable I). Amounts are minor units of
+    `currency`; a transfer in any other currency has no limit here and is refused.
+    """
+
+    source_name: str
+    published: date
+    currency: CurrencyCode
+    single_transfer_limits: Mapping[str, int]  # by KYC tier, e.g. {"L1": ..., "L3": ...}
+    cumulative_30d_limit: int  # prior 30 days' volume + this transfer
+    pep_review_threshold: int  # a PEP sending above this is escalated for review
+
+    def __post_init__(self) -> None:
+        if not self.source_name.strip():
+            raise LimitTableError("A limit table needs the name of the source that sets it.")
+        if not self.single_transfer_limits:
+            raise LimitTableError(f"Limit table '{self.source_name}' names no KYC tier.")
+        figures = [
+            *self.single_transfer_limits.values(),
+            self.cumulative_30d_limit,
+            self.pep_review_threshold,
+        ]
+        if any(figure <= 0 for figure in figures):
+            raise LimitTableError(f"Limit table '{self.source_name}' has a non-positive limit.")
+
+    def citation(self) -> str:
+        return f"LIMITS:{self.source_name}@{self.published.isoformat()}"
 
 
 class EntryGuardrail:
     """Deterministic entry gate preceding the ASCO multi-agent negotiation loop."""
 
-    def __init__(self, sanctions_screener: SanctionsScreener) -> None:
+    def __init__(self, sanctions_screener: SanctionsScreener, limit_table: LimitTable) -> None:
+        if limit_table is None:
+            raise LimitTableError(
+                "EntryGuardrail needs a sourced limit table; it holds no limits of its own."
+            )
+        self._limits = limit_table
         if sanctions_screener is None:
             raise EmptySanctionsListError(
                 "EntryGuardrail needs a sanctions screener with a loaded list; "
@@ -214,13 +243,30 @@ class EntryGuardrail:
                 ),
             )
 
-        # 4. PEP Screening & Enhanced Due Diligence
+        # 4. Is there a limit for this transfer at all? The table's figures are in its own
+        # currency and for the tiers it names. Anything else has no limit this gate can
+        # apply, so it is refused -- never compared against a table that does not fit it.
+        limits = self._limits
         send_amount_minor = transfer.quote.send.minor_units
-        if sender_profile.is_pep and send_amount_minor > _PEP_ENHANCED_DUE_DILIGENCE_THRESHOLD:
+        if transfer.quote.send.currency != limits.currency or (
+            sender_profile.kyc_tier not in limits.single_transfer_limits
+        ):
+            return EntryGuardrailResult(
+                outcome=GuardrailOutcome.REJECTED,
+                stage="LIMITS",
+                cited_rules=["LIMIT_TABLE_UNAVAILABLE", limits.citation()],
+                rejection_reason=(
+                    f"No limit for a {transfer.quote.send.currency} transfer by KYC tier "
+                    f"'{sender_profile.kyc_tier}' in {limits.source_name}."
+                ),
+            )
+
+        # 5. PEP Screening & Enhanced Due Diligence
+        if sender_profile.is_pep and send_amount_minor > limits.pep_review_threshold:
             return EntryGuardrailResult(
                 outcome=GuardrailOutcome.ESCALATE,
                 stage="PEP_SCREEN",
-                cited_rules=["FIC_ACT_S21H_PEP"],
+                cited_rules=["FIC_ACT_S21H_PEP", limits.citation()],
                 rejection_reason=(
                     "Sender is a Politically Exposed Person (PEP) exceeding threshold. "
                     "Escalating for human compliance review."
@@ -228,45 +274,30 @@ class EntryGuardrail:
                 transfer=transfer,
             )
 
-        # The limit tables below are SARB figures in ZAR minor units. A transfer sent in
-        # another currency, or a tier the table does not name, has no limit this gate can
-        # apply -- so it is refused, never compared against a table that does not fit it.
-        if transfer.quote.send.currency != CurrencyCode.ZAR or (
-            sender_profile.kyc_tier not in _TIER_SINGLE_LIMITS
-        ):
-            return EntryGuardrailResult(
-                outcome=GuardrailOutcome.REJECTED,
-                stage="LIMITS",
-                cited_rules=["LIMIT_TABLE_UNAVAILABLE"],
-                rejection_reason=(
-                    f"No limit table for a {transfer.quote.send.currency} transfer by KYC tier "
-                    f"'{sender_profile.kyc_tier}'; the gate holds ZAR limits for L1-L3 only."
-                ),
-            )
-
-        # 5. KYC Tier Single Transfer Limit
-        tier_limit = _TIER_SINGLE_LIMITS[sender_profile.kyc_tier]
+        # 6. KYC Tier Single Transfer Limit
+        tier_limit = limits.single_transfer_limits[sender_profile.kyc_tier]
         if send_amount_minor > tier_limit:
             return EntryGuardrailResult(
                 outcome=GuardrailOutcome.REJECTED,
                 stage="LIMITS",
-                cited_rules=["FICA_TIER_LIMIT", "SARB_EXCON_LIMIT_EXCEEDED"],
+                cited_rules=["FICA_TIER_LIMIT", "SARB_EXCON_LIMIT_EXCEEDED", limits.citation()],
                 rejection_reason=(
                     f"Send amount ({send_amount_minor} minor units) exceeds KYC tier "
                     f"'{sender_profile.kyc_tier}' single transaction limit ({tier_limit})."
                 ),
             )
 
-        # 6. Cumulative SDA Limit Check
+        # 7. Cumulative 30-day limit
         cumulative_volume = sender_profile.prior_transfers_30d_minor_units + send_amount_minor
-        if cumulative_volume > _MAX_SDA_CUMULATIVE_LIMIT:
+        if cumulative_volume > limits.cumulative_30d_limit:
             return EntryGuardrailResult(
                 outcome=GuardrailOutcome.REJECTED,
                 stage="LIMITS",
-                cited_rules=["SARB_EXCON_SDA_CAP_EXCEEDED"],
+                cited_rules=["SARB_EXCON_SDA_CAP_EXCEEDED", limits.citation()],
                 rejection_reason=(
                     f"Cumulative 30-day transfer volume ({cumulative_volume} minor units) "
-                    f"exceeds SARB SDA annual cap ({_MAX_SDA_CUMULATIVE_LIMIT} minor units)."
+                    f"exceeds the 30-day limit ({limits.cumulative_30d_limit}) in "
+                    f"{limits.source_name}."
                 ),
             )
 

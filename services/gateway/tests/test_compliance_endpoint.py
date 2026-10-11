@@ -16,6 +16,7 @@ def test_health_reports_unavailable_when_nothing_is_wired() -> None:
         "sentinel_client",
         "strategist_client",
         "sanctions_screener",
+        "limit_table",
         "rail_router",
         "audit_logger",
     ]
