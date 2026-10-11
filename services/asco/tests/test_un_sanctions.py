@@ -93,16 +93,47 @@ def test_a_list_naming_no_one_is_refused() -> None:
         load_un_consolidated_list(empty)
 
 
-def test_external_entities_are_never_resolved(tmp_path) -> None:  # noqa: ANN001
-    """The file comes from outside: an entity pointing at a local file must not be read."""
+def test_any_doctype_is_refused(tmp_path) -> None:  # noqa: ANN001
+    """The published list has no DOCTYPE; one carrying entities is refused, not half-read."""
     secret = tmp_path / "secret.txt"
     secret.write_text("LEAKED SECRET NAME")
     hostile = (
         f'<?xml version="1.0"?><!DOCTYPE l [<!ENTITY x SYSTEM "file://{secret}">]>'
         '<CONSOLIDATED_LIST dateGenerated="2026-10-10T00:00:00Z"><ENTITIES><ENTITY>'
-        "<FIRST_NAME>&x;</FIRST_NAME></ENTITY><ENTITY><FIRST_NAME>Real Entry</FIRST_NAME>"
-        "</ENTITY></ENTITIES></CONSOLIDATED_LIST>"
+        "<FIRST_NAME>&x;</FIRST_NAME></ENTITY></ENTITIES></CONSOLIDATED_LIST>"
     ).encode()
-    screener = load_un_consolidated_list(hostile)
-    assert not screener.is_sanctioned("LEAKED SECRET NAME")
-    assert screener.is_sanctioned("Real Entry")
+    with pytest.raises(SanctionsListFormatError, match="DOCTYPE"):
+        load_un_consolidated_list(hostile)
+
+
+def test_entity_expansion_is_refused() -> None:
+    bomb = (
+        b'<?xml version="1.0"?><!DOCTYPE l [<!ENTITY a "aaaaaaaaaa">'
+        b'<!ENTITY b "&a;&a;&a;&a;&a;&a;&a;&a;&a;&a;"><!ENTITY c "&b;&b;&b;&b;&b;&b;&b;&b;">]>'
+        b'<CONSOLIDATED_LIST dateGenerated="2026-10-10T00:00:00Z"><ENTITIES><ENTITY>'
+        b"<FIRST_NAME>&c;</FIRST_NAME></ENTITY></ENTITIES></CONSOLIDATED_LIST>"
+    )
+    with pytest.raises(SanctionsListFormatError):
+        load_un_consolidated_list(bomb)
+
+
+def test_published_date_is_the_utc_date() -> None:
+    late = FIXTURE.replace(b"2026-10-10T23:00:02.187Z", b"2026-10-11T01:00:00+02:00")
+    assert load_un_consolidated_list(late).source.published == date(2026, 10, 10)
+
+
+@pytest.mark.parametrize(
+    "disguised",
+    [
+        "Fictional\u200b Person One",  # zero-width space
+        "Fictional Per\u00adson One",  # soft hyphen
+        "\uff26ictional Person One",  # full-width F
+    ],
+)
+def test_invisible_and_compatibility_characters_do_not_evade_a_match(disguised: str) -> None:
+    assert load_un_consolidated_list(FIXTURE).is_sanctioned(disguised)
+
+
+def test_decomposed_accents_match_composed_ones() -> None:
+    accented = FIXTURE.replace(b"FTC Holdings", "Caf\u00e9 Holdings".encode())
+    assert load_un_consolidated_list(accented).is_sanctioned("Cafe\u0301 Holdings")

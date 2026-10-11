@@ -6,6 +6,7 @@ Hard Gates (deterministic, zero LLM):
 3. Corridor support and KYC/SDA limits (SARB EXCON B.4, FICA Tier limits).
 """
 
+import unicodedata
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import date
@@ -87,8 +88,15 @@ class SanctionsScreener(Protocol):
 
 
 def _normalise(name: str) -> str:
-    """Case-folded, whitespace collapsed -- exact matching after this; see §3.1 and T077."""
-    return " ".join(name.split()).casefold()
+    """NFKC, invisible format characters dropped, whitespace collapsed, case-folded.
+
+    Applied to the list and the party alike, so it never weakens a match. Without the
+    first two steps a zero-width space or a decomposed accent typed into a name slips past
+    an exact match. Exact matching after this; fuzzy matching is T077 (asco-orchestrator §3.1).
+    """
+    composed = unicodedata.normalize("NFKC", name)
+    visible = "".join(c for c in composed if unicodedata.category(c) != "Cf")
+    return " ".join(visible.split()).casefold()
 
 
 class StaticSanctionsScreener:

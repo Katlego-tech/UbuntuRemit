@@ -4,7 +4,7 @@ The loader parses bytes it is handed and never fetches: what the gate screens ag
 exactly the file operations downloaded, dated by the list's own `dateGenerated`.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from lxml import etree
 from ubunturemit_asco.guardrails.entry import SanctionsListSource, StaticSanctionsScreener
@@ -40,13 +40,17 @@ def load_un_consolidated_list(document: bytes) -> StaticSanctionsScreener:
     Raises SanctionsListFormatError for anything that is not the list, or has no
     `dateGenerated`; EmptySanctionsListError (from the screener) if it names no one.
     """
-    # Hardened: the file comes from outside the institution, so no entity expansion
-    # and no network access while parsing.
+    # Hardened: the file comes from outside the institution. The published list has no
+    # DOCTYPE, so any document carrying one is refused outright -- that rules out entity
+    # expansion, and an unresolved entity silently truncating a name.
     parser = etree.XMLParser(resolve_entities=False, no_network=True)
     try:
-        root = etree.fromstring(document, parser)
+        tree = etree.fromstring(document, parser).getroottree()
     except etree.XMLSyntaxError as err:
         raise SanctionsListFormatError(f"Not well-formed XML: {err}") from err
+    if tree.docinfo.doctype:
+        raise SanctionsListFormatError("The list carries a DOCTYPE; the published list has none.")
+    root = tree.getroot()
     if root.tag != "CONSOLIDATED_LIST":
         raise SanctionsListFormatError(f"Root element is <{root.tag}>, not <CONSOLIDATED_LIST>.")
 
@@ -54,7 +58,10 @@ def load_un_consolidated_list(document: bytes) -> StaticSanctionsScreener:
     if not generated:
         raise SanctionsListFormatError("The list has no dateGenerated; its date is unknown.")
     try:
-        published = datetime.fromisoformat(generated).date()
+        stamp = datetime.fromisoformat(generated)
+        if stamp.tzinfo is None:
+            raise ValueError("no UTC offset")
+        published = stamp.astimezone(UTC).date()
     except ValueError as err:
         raise SanctionsListFormatError(f"Unreadable dateGenerated '{generated}'.") from err
 

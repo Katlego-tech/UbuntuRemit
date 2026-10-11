@@ -132,6 +132,13 @@ class LiquidityStrategist:
         rail = SettlementRail(rail_str)
 
         cost_minor = int(data["totalCost"]["minorUnits"])
+        # A cost stated in another currency is not this transfer's cost: refuse it rather
+        # than relabel it (the retry path, then escalation).
+        if data["totalCost"]["currency"] != request_input.amount.currency.value:
+            raise ValueError(
+                f"totalCost currency {data['totalCost']['currency']!r} is not the transfer's "
+                f"{request_input.amount.currency.value}"
+            )
         total_cost = Money(
             minor_units=cost_minor,
             currency=request_input.amount.currency,

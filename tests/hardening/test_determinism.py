@@ -64,6 +64,7 @@ class SeededMockLLMClient:
                     "rail": "PAPSS",
                     "totalCost": {
                         "minorUnits": 1200,
+                        "currency": "ZAR",
                     },
                     "estimatedSeconds": 11.0,
                     "rationale": "PAPSS offers optimal fee and latency.",

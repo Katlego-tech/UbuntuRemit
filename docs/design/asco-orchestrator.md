@@ -108,9 +108,11 @@ entities):
 | `ENTITY/FIRST_NAME`, `ENTITY_ALIAS/ALIAS_NAME` (`a.k.a.` and `f.k.a.`) | a name |
 
 - **The loader never fetches.** It parses bytes it is handed, so what was screened against is
-  exactly the file operations fetched and dated. Parsing is hardened (`resolve_entities=False`,
-  `no_network=True`): the file comes from outside the institution.
-- **Matching is exact after normalisation** — case-folded, whitespace collapsed. That is weaker than
+  exactly the file operations fetched and dated. The file comes from outside the institution, so
+  any document carrying a `DOCTYPE` is refused (the published list has none) and entities are never
+  resolved. `dateGenerated` must carry a UTC offset; `published` is its UTC date.
+- **Matching is exact after normalisation** — NFKC, invisible format characters (zero-width
+  spaces, soft hyphens) dropped, whitespace collapsed, case-folded; applied to both sides. That is weaker than
   production screening, which matches transliterations and near-misses. Choosing a fuzzy-match
   policy and its threshold is a compliance decision, not a coding one: **T077**, blocked on it.
 - The list carries no BICs, so a UN-loaded screener screens names only.
