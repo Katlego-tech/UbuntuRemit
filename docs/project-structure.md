@@ -64,6 +64,7 @@ UbuntuRemit/
 │   ├── messaging/                 ✅ ISO 20022 message builders/parsers and 3-tier validation (T028-T039)
 │   ├── asco/                      ✅ multi-agent negotiation loop, entry/exit guardrails, orchestrator (T040-T047)
 │   ├── audit/                     ✅ append-only Postgres store (writer role: SELECT+INSERT only) fed over Kafka asco.audit (T050-T051, T050a)
+│   ├── inference/                 🔄 VllmChatClient — schema-constrained vLLM client for both agents (T078); servers blocked (T079)
 │   └── rails/                     🔄 bounded retry router (T055); Ripple/PAPSS/SWIFT adapters blocked (T052-T054)
 ├── tests/                         ✅ workspace integration and hardening suites (Phase 6)
 │   └── hardening/                 🔄 determinism + concurrency harnesses over mocked models; real runs (T060-T062) blocked on the MI300X

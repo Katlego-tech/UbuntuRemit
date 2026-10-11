@@ -41,7 +41,10 @@ classDiagram
         +float timeout_s
         +int seed
         +int max_tokens
+        +VllmChatClient(..., transport: httpx.BaseTransport = None)
+        +request_body(prompt, system_prompt) dict
         +complete(prompt, system_prompt) str
+        +close()
     }
     class InferenceTimeoutError {
         <<ubunturemit_asco>>
@@ -54,7 +57,13 @@ classDiagram
     VllmChatClient ..> InferenceResponseError : transport error, non-200, empty, finish_reason ≠ stop
 ```
 
-- **One client per agent**, each bound to its agent's schema at construction. The `LLMClient`
+- **One client per agent**, each bound to its agent's schema at construction. Construction refuses
+  a blank `base_url`, `model` or `schema_name`, an empty schema, and a non-positive `timeout_s` or
+  `max_tokens`. `transport` exists for tests (`httpx.MockTransport`); `request_body()` is the body
+  `complete()` sends; `close()` releases the connection pool at shutdown. The client ignores proxy
+  settings in the environment (`trust_env=False`) — prompts carry KYC and PEP data.
+- The schemas live in `ubunturemit_inference.schemas` (`COMPLIANCE_VERDICT_SCHEMA`,
+  `LIQUIDITY_PROPOSAL_SCHEMA` and their names); a test holds them equal to §5's blocks. The `LLMClient`
   protocol stays unchanged, so nothing in `services/asco` changes.
 - `VllmChatClient` lives in `services/inference/` (its own package, per
   [project-structure.md](../project-structure.md)), which **depends on `ubunturemit-asco`** and
@@ -77,7 +86,7 @@ sequenceDiagram
     C->>V: POST /v1/chat/completions<br/>model, messages[system, user],<br/>response_format json_schema (strict),<br/>temperature 0, seed
     alt any httpx timeout (connect, read, write, pool) within timeout_s
         C-->>A: raise InferenceTimeoutError  (Sentinel → ESCALATE)
-    else other transport error, HTTP ≠ 200, no content, or finish_reason ≠ "stop"
+    else other request error, HTTP ≠ 200, no content, or finish_reason ≠ "stop"
         C-->>A: raise InferenceResponseError  (re-ask once, then ESCALATE)
     else
         V-->>C: choices[0].message.content
@@ -87,7 +96,8 @@ sequenceDiagram
 
 - **Errors map onto the paths the agents already have.** Every `httpx.TimeoutException` is
   `InferenceTimeoutError`, which the Sentinel turns into ESCALATE and the coordinator escalates for
-  the Strategist. Every other `httpx.TransportError` (connection refused, DNS failure), a non-200,
+  the Strategist. Every other `httpx.RequestError` (connection refused, DNS failure, an undecodable
+  body), a non-200,
   a reply with no `choices[0].message.content`, and any `finish_reason` other than `"stop"` is
   `InferenceResponseError`, which takes the re-ask-then-escalate path.
 - `"length"` means truncated JSON; `"abort"` or any other reason means the model did not finish.
@@ -165,8 +175,9 @@ The vLLM docs page checked on 2026-10-11 does not say. The agents' own validatio
 ```
 
 Request fields set by the client: `temperature: 0`, the configured `seed`, and the configured
-`max_tokens`. With every string and array bounded, the longest valid reply is finite; T079 measures
-it in tokens for each chosen model and sets `max_tokens` above it. Until then it is a required
+`max_tokens`. Every string and array is bounded, but JSON numbers are not: a model looping on digits
+still runs to `max_tokens` and fails closed as `finish_reason: "length"`. T079 measures the longest
+realistic reply in tokens for each chosen model and sets `max_tokens` above it. Until then it is a required
 constructor argument with no default.
 
 ## 6. Serving
@@ -175,13 +186,13 @@ constructor argument with no default.
 | --- | --- | --- |
 | Processes | Two vLLM servers on the one MI300X, one per model, each with its own `--gpu-memory-utilization` share | PLAN.md: both models co-resident on one node; separate processes keep one model's failure from taking the other down |
 | Structured-output backend | vLLM's default (`auto`) | No measured reason to pin one yet |
-| Reachability | Inside the institution's network only; the client takes `base_url` from deployment config | PLAN.md: no third-party LLM API, ever. Enforced by network egress policy, not by the client guessing which hosts are third-party |
+| Reachability | Inside the institution's network only; the client takes `base_url` — the server root, without `/v1` — from deployment config | PLAN.md: no third-party LLM API, ever. Enforced by network egress policy, not by the client guessing which hosts are third-party |
 | Checkpoints | **Not chosen** — 70B-class (Sentinel) and 32B-class (Strategist) per PLAN.md | Choosing them is T080 |
 | Quantisation | Not adopted | FP8 is an untested hypothesis until T061 measures it |
 
 ## 7. How this is verified
 
-- **T078 (buildable now):** unit tests against `httpx.MockTransport` — the request body carries the
+- **T078 (built):** unit tests against `httpx.MockTransport` — the request body carries the
   `response_format` envelope with the schema, `temperature 0`, the seed and `max_tokens`; a read
   timeout and a connect timeout each raise `ubunturemit_asco.InferenceTimeoutError` (asserted as
   that exact class); a refused connection, a 500, an empty `choices`, missing `content`,

@@ -77,7 +77,7 @@ endpoint that needs one. That is the correct behaviour today, not a gap to paper
 | Source | What would provide it | Until then |
 | --- | --- | --- |
 | `quote_source` | a live FX rate provider | `GET /api/fx/quote`, `POST /api/transfers` → 503 |
-| `sentinel_client`, `strategist_client` | `services/inference` — vLLM on the MI300X ([asco-orchestrator.md](asco-orchestrator.md) §3, *planned*) | `POST /api/transfers` → 503 |
+| `sentinel_client`, `strategist_client` | `ubunturemit_inference.VllmChatClient` ([inference.md](inference.md), built in T078) pointed at the vLLM servers on the MI300X — the servers are T079, not yet up | `POST /api/transfers` → 503 |
 | `sanctions_screener` | a published list (e.g. the UN consolidated list) loaded with its own date | `POST /api/transfers` → 503 |
 | `limit_table` | the KYC / EXCON limits as published by their regulator, loaded with the source's name and date | `POST /api/transfers` → 503 |
 | `audit_logger` | `ubunturemit_audit.KafkaAuditLogger` — waits for the broker's ack, raises otherwise (T050a) | `POST /api/transfers` → 503 |
