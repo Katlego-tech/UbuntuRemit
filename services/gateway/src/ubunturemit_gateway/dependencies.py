@@ -11,7 +11,6 @@ from typing import Protocol
 from fastapi import HTTPException, Request
 from ubunturemit_asco import (
     AuditLogger,
-    InMemoryAuditLogger,
     LLMClient,
     MasterOrchestrator,
     SanctionsScreener,
@@ -43,6 +42,10 @@ class GatewayDependencies:
     strategist_client: LLMClient | None = None
     sanctions_screener: SanctionsScreener | None = None
     rail_router: RailRouter | None = None
+    # Where every agent turn and gate decision is written -- in production a
+    # ubunturemit_audit.KafkaAuditLogger. An in-process logger would make every
+    # settlement unauditable once the process exits.
+    audit_logger: AuditLogger | None = None
 
     def missing(self) -> list[str]:
         """Names of the sources not configured, in a stable order."""
@@ -52,6 +55,7 @@ class GatewayDependencies:
             "strategist_client": self.strategist_client,
             "sanctions_screener": self.sanctions_screener,
             "rail_router": self.rail_router,
+            "audit_logger": self.audit_logger,
         }
         return [name for name, value in names.items() if value is None]
 
@@ -65,7 +69,6 @@ class GatewayRuntime:
     """
 
     orchestrator: MasterOrchestrator = field(default_factory=MasterOrchestrator)
-    audit_logger: AuditLogger = field(default_factory=InMemoryAuditLogger)
     transfers: dict[str, TransferResponse] = field(default_factory=dict)
 
     def remember(self, response: TransferResponse) -> TransferResponse:

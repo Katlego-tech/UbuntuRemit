@@ -11,6 +11,8 @@ requires-python = "==3.13.*"
 dependencies = [
     "ubunturemit-domain",
     "ubunturemit-asco",
+    "psycopg[binary]==3.3.6",
+    "confluent-kafka==2.16.0",
 ]
 
 [build-system]

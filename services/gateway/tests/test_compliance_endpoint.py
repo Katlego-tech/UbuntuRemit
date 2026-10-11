@@ -17,8 +17,10 @@ def test_health_reports_unavailable_when_nothing_is_wired() -> None:
         "strategist_client",
         "sanctions_screener",
         "rail_router",
+        "audit_logger",
     ]
     assert data["sanctions_list"] is None
+    assert data["audit_log"] is None
     assert data["rejection_rate_24h"] is None
     assert data["total_screened_24h"] is None
 

@@ -8,7 +8,12 @@ import json
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
-from ubunturemit_asco import RailQuote, SanctionsListSource, StaticSanctionsScreener
+from ubunturemit_asco import (
+    InMemoryAuditLogger,
+    RailQuote,
+    SanctionsListSource,
+    StaticSanctionsScreener,
+)
 from ubunturemit_domain import (
     Corridor,
     CurrencyCode,
@@ -106,4 +111,6 @@ def configured_dependencies() -> GatewayDependencies:
             source=TEST_LIST, sanctioned_names=["Listed Test Person"]
         ),
         rail_router=RailRouter(adapters={SettlementRail.PAPSS: SimulatedTestRail()}),
+        # Test-only: the deployed gateway is given a KafkaAuditLogger (T050a).
+        audit_logger=InMemoryAuditLogger(),
     )

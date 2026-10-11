@@ -53,13 +53,14 @@ def initiate_transfer(
     # assessed by real sources, or refused -- never part-way on a stand-in.
     quote_source, screener = deps.quote_source, deps.sanctions_screener
     sentinel_client, strategist_client = deps.sentinel_client, deps.strategist_client
-    rail_router = deps.rail_router
+    rail_router, audit_logger = deps.rail_router, deps.audit_logger
     if (
         quote_source is None
         or screener is None
         or sentinel_client is None
         or strategist_client is None
         or rail_router is None
+        or audit_logger is None
     ):
         raise not_configured(*deps.missing())
 
@@ -149,7 +150,7 @@ def initiate_transfer(
         compliance_sentinel=ComplianceSentinel(llm_client=sentinel_client),
         liquidity_strategist=LiquidityStrategist(llm_client=strategist_client),
         exit_validator=ExitValidator(),
-        audit_logger=runtime.audit_logger,
+        audit_logger=audit_logger,
     )
 
     assessment_input = ComplianceAssessmentInput(

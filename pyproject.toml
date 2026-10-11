@@ -66,7 +66,10 @@ select = [
 "scripts/test_*.py" = ["S101"]  # the gate's own tools are tested beside them
 
 [tool.pytest.ini_options]
-addopts = "-q --strict-markers --strict-config"
+addopts = "-q --strict-markers --strict-config -m 'not integration'"
+# Integration tests need the compose Postgres and Kafka; the gate's integration check
+# starts both and runs them with `-m integration` (which overrides the filter above).
+markers = ["integration: needs the compose Postgres + Kafka (docker compose up --wait)"]
 # `scripts` is here because the gate has code of its own now (check_markup.py),
 # and a check nobody tests is a check nobody can trust to fail correctly.
 testpaths = ["libs", "services", "scripts", "tests"]
