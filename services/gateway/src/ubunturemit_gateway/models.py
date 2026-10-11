@@ -1,7 +1,7 @@
-"""Data transfer schemas for FastAPI Gateway -- docs/design/frontend-web.md §4, §6."""
+"""Data transfer schemas for the gateway -- docs/design/gateway.md §5."""
 
 from decimal import Decimal
-from typing import Any
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -32,7 +32,9 @@ class TransferInitiationRequest(BaseModel):
     sender_bic: str
     sender_country: str
     sender_national_id: str
-    sender_kyc_tier: str = "TIER_3"
+    # The entry gate's KYC tiers. Required: a defaulted or coerced tier is an invented
+    # KYC fact, and it would choose the single-transfer limit the gate applies.
+    sender_kyc_tier: Literal["L1", "L2", "L3"]
     sender_is_pep: bool = False
     recipient_name: str
     recipient_account: str
@@ -41,6 +43,12 @@ class TransferInitiationRequest(BaseModel):
     recipient_national_id: str
     purpose: str
     source_of_funds: str
+    # Compliance inputs the institution's own records hold. Required: the gateway has no
+    # transfer history or account register of its own, and a default here would be a
+    # fabricated fact fed to the velocity and account-age checks.
+    sender_prior_transfers_30d_count: int = Field(..., ge=0)
+    sender_prior_transfers_30d_minor_units: int = Field(..., ge=0)
+    recipient_account_age_days: int = Field(..., ge=0)
 
 
 class TransferResponse(BaseModel):
@@ -56,30 +64,13 @@ class TransferResponse(BaseModel):
 
 
 class ComplianceHealthResponse(BaseModel):
-    status: str
-    engine_version: str
-    rules_enforced: list[str]
-    sanctions_list_status: str
-    audit_log_status: str
-    rejection_rate_24h: float
-    total_screened_24h: int
+    """What the deployment can actually do -- every field derived from its wiring."""
 
-
-class WalletAccount(BaseModel):
-    currency: str
-    balance_minor_units: int
-    institution_nostro_bic: str
-
-
-class WalletResponse(BaseModel):
-    institution_name: str
-    accounts: list[WalletAccount]
-    recent_settlements: list[dict[str, Any]]
-
-
-class SessionResponse(BaseModel):
-    institution_id: str
-    institution_name: str
-    country: str
-    kyc_tier: str
-    status: str
+    status: str  # "OPERATIONAL" only when no source is missing, else "UNAVAILABLE"
+    missing_dependencies: list[str]
+    rules_enforced: list[str]  # the rule IDs the deterministic entry gate can cite
+    sanctions_list: str | None  # the loaded list's citation, or None when none is loaded
+    audit_log: str  # the audit sink in use, by type
+    # No persistent screening history exists yet (T050a), so there is nothing to count.
+    rejection_rate_24h: float | None = None
+    total_screened_24h: int | None = None

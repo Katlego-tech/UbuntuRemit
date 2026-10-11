@@ -6,11 +6,13 @@ Hard Gates (deterministic, zero LLM):
 3. Corridor support and KYC/SDA limits (SARB EXCON B.4, FICA Tier limits).
 """
 
+from collections.abc import Iterable
 from dataclasses import dataclass
+from datetime import date
 from enum import StrEnum
 from typing import Protocol
 
-from ubunturemit_domain import Transfer
+from ubunturemit_domain import CurrencyCode, Transfer
 from ubunturemit_messaging.pain001 import parse_pain001
 from ubunturemit_messaging.validate import validate_pain001_message
 
@@ -30,8 +32,10 @@ class SenderProfile:
     kyc_tier: str  # "L1", "L2", "L3"
     country_of_residence: str
     is_pep: bool
-    prior_transfers_30d_count: int = 0
-    prior_transfers_30d_minor_units: int = 0
+    # No defaults: a zero is a claim about the sender's history (the SDA cumulative check
+    # reads it), so the caller states it.
+    prior_transfers_30d_count: int
+    prior_transfers_30d_minor_units: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,11 +43,43 @@ class RecipientProfile:
     """Recipient profile for compliance and corridor evaluation."""
 
     country_of_residence: str
-    account_age_days: int = 0
+    account_age_days: int
+
+
+@dataclass(frozen=True, slots=True)
+class SanctionsListSource:
+    """The list a screener holds: which list, as published on which date.
+
+    A sanctions decision cites this, so a rejection names the list it matched against
+    rather than claiming a list nobody loaded.
+    """
+
+    name: str  # e.g. "UN Security Council Consolidated List"
+    published: date  # the list's own generation date, not the load date
+
+    def __post_init__(self) -> None:
+        if not self.name.strip():
+            raise ValueError("A sanctions list source needs a name.")
+
+    def citation(self) -> str:
+        return f"SANCTIONS_LIST:{self.name}@{self.published.isoformat()}"
+
+
+class EmptySanctionsListError(ValueError):
+    """Raised when a screener is built over zero entries.
+
+    Screening against nothing clears everyone and still writes an audit record saying
+    the check ran -- worse than no check at all (T041a).
+    """
 
 
 class SanctionsScreener(Protocol):
     """Protocol for screening entities against deterministic sanctions lists."""
+
+    @property
+    def source(self) -> SanctionsListSource:
+        """The named, dated list this screener holds."""
+        ...
 
     def is_sanctioned(self, name: str, bic: str = "") -> bool:
         """Return True if the party matches any active sanctions list."""
@@ -51,15 +87,25 @@ class SanctionsScreener(Protocol):
 
 
 class StaticSanctionsScreener:
-    """Deterministic in-memory sanctions screener for test and reference environments."""
+    """Deterministic in-memory screener over a list loaded from a named, dated source."""
 
     def __init__(
         self,
-        sanctioned_names: set[str] | None = None,
-        sanctioned_bics: set[str] | None = None,
+        source: SanctionsListSource,
+        sanctioned_names: Iterable[str],
+        sanctioned_bics: Iterable[str] = (),
     ) -> None:
-        self._names = {n.strip().upper() for n in (sanctioned_names or set())}
-        self._bics = {b.strip().upper() for b in (sanctioned_bics or set())}
+        self._source = source
+        self._names = {n.strip().upper() for n in sanctioned_names if n.strip()}
+        self._bics = {b.strip().upper() for b in sanctioned_bics if b.strip()}
+        if not self._names and not self._bics:
+            raise EmptySanctionsListError(
+                f"Sanctions list '{source.name}' has no entries; refusing to screen against it."
+            )
+
+    @property
+    def source(self) -> SanctionsListSource:
+        return self._source
 
     def is_sanctioned(self, name: str, bic: str = "") -> bool:
         if name.strip().upper() in self._names:
@@ -80,6 +126,20 @@ class EntryGuardrailResult:
     rejection_reason: str | None = None
 
 
+# Every rule ID the gates below can cite, in gate order. The compliance health endpoint
+# reports this list, so it must name exactly what this file enforces -- the sanctions
+# list itself is cited by its source (SanctionsListSource.citation), not listed here.
+ENTRY_GATE_RULES: tuple[str, ...] = (
+    "ISO_20022_PAIN001_SCHEMA",
+    "ISO_20022_PARSER_ERROR",
+    "FIC_ACT_S28A",
+    "FIC_ACT_S21H_PEP",
+    "FICA_TIER_LIMIT",
+    "SARB_EXCON_LIMIT_EXCEEDED",
+    "SARB_EXCON_SDA_CAP_EXCEEDED",
+    "LIMIT_TABLE_UNAVAILABLE",
+)
+
 # SARB EXCON & FICA Tier limits in ZAR minor units (100 cents = 1 ZAR)
 _TIER_SINGLE_LIMITS: dict[str, int] = {
     "L1": 500000,  # 5,000.00 ZAR
@@ -97,8 +157,13 @@ _PEP_ENHANCED_DUE_DILIGENCE_THRESHOLD: int = 5000000  # 50,000.00 ZAR
 class EntryGuardrail:
     """Deterministic entry gate preceding the ASCO multi-agent negotiation loop."""
 
-    def __init__(self, sanctions_screener: SanctionsScreener | None = None) -> None:
-        self._screener = sanctions_screener or StaticSanctionsScreener()
+    def __init__(self, sanctions_screener: SanctionsScreener) -> None:
+        if sanctions_screener is None:
+            raise EmptySanctionsListError(
+                "EntryGuardrail needs a sanctions screener with a loaded list; "
+                "it refuses to screen against nothing."
+            )
+        self._screener = sanctions_screener
 
     def evaluate(
         self,
@@ -133,7 +198,7 @@ class EntryGuardrail:
             return EntryGuardrailResult(
                 outcome=GuardrailOutcome.REJECTED,
                 stage="SANCTIONS",
-                cited_rules=["FIC_ACT_S28A", "UN_SANCTIONS_LIST"],
+                cited_rules=["FIC_ACT_S28A", self._screener.source.citation()],
                 rejection_reason=(
                     f"Sanctions match detected for sender '{transfer.sender.full_name}'"
                 ),
@@ -143,7 +208,7 @@ class EntryGuardrail:
             return EntryGuardrailResult(
                 outcome=GuardrailOutcome.REJECTED,
                 stage="SANCTIONS",
-                cited_rules=["FIC_ACT_S28A", "UN_SANCTIONS_LIST"],
+                cited_rules=["FIC_ACT_S28A", self._screener.source.citation()],
                 rejection_reason=(
                     f"Sanctions match detected for recipient '{transfer.recipient.full_name}'"
                 ),
@@ -163,8 +228,24 @@ class EntryGuardrail:
                 transfer=transfer,
             )
 
+        # The limit tables below are SARB figures in ZAR minor units. A transfer sent in
+        # another currency, or a tier the table does not name, has no limit this gate can
+        # apply -- so it is refused, never compared against a table that does not fit it.
+        if transfer.quote.send.currency != CurrencyCode.ZAR or (
+            sender_profile.kyc_tier not in _TIER_SINGLE_LIMITS
+        ):
+            return EntryGuardrailResult(
+                outcome=GuardrailOutcome.REJECTED,
+                stage="LIMITS",
+                cited_rules=["LIMIT_TABLE_UNAVAILABLE"],
+                rejection_reason=(
+                    f"No limit table for a {transfer.quote.send.currency} transfer by KYC tier "
+                    f"'{sender_profile.kyc_tier}'; the gate holds ZAR limits for L1-L3 only."
+                ),
+            )
+
         # 5. KYC Tier Single Transfer Limit
-        tier_limit = _TIER_SINGLE_LIMITS.get(sender_profile.kyc_tier, _TIER_SINGLE_LIMITS["L1"])
+        tier_limit = _TIER_SINGLE_LIMITS[sender_profile.kyc_tier]
         if send_amount_minor > tier_limit:
             return EntryGuardrailResult(
                 outcome=GuardrailOutcome.REJECTED,

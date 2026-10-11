@@ -78,7 +78,8 @@ class ExitValidator:
         if proposal is not None:
             quotes = rail_quotes or []
             offered_rails = {q.rail for q in quotes}
-            if offered_rails and proposal.rail not in offered_rails:
+            # No quotes offered means no rail can be justified -- fail closed.
+            if proposal.rail not in offered_rails:
                 return ExitValidationResult(
                     valid=False,
                     stage="RAIL_ELIGIBILITY",
@@ -88,6 +89,32 @@ class ExitValidator:
                         "(fabricated rail)."
                     ),
                 )
+
+            # The proposal's latency is the quote's, not the model's: a figure that
+            # differs from what the rail quoted is invented. A total cost below the
+            # quoted fee cannot be the rail's cost either.
+            chosen = next((q for q in quotes if q.rail == proposal.rail), None)
+            if chosen is not None:
+                if proposal.estimated_seconds != chosen.estimated_seconds:
+                    return ExitValidationResult(
+                        valid=False,
+                        stage="RAIL_ELIGIBILITY",
+                        deterministic_override=True,
+                        reason=(
+                            f"Proposed latency {proposal.estimated_seconds}s differs from the "
+                            f"{proposal.rail} quote ({chosen.estimated_seconds}s)."
+                        ),
+                    )
+                if proposal.total_cost.minor_units < chosen.fee_minor_units:
+                    return ExitValidationResult(
+                        valid=False,
+                        stage="RAIL_ELIGIBILITY",
+                        deterministic_override=True,
+                        reason=(
+                            f"Proposed cost {proposal.total_cost.minor_units} is below the "
+                            f"{proposal.rail} quoted fee ({chosen.fee_minor_units})."
+                        ),
+                    )
 
             forbidden = set(verdict.constraints.forbidden_rails)
             if proposal.rail in forbidden:

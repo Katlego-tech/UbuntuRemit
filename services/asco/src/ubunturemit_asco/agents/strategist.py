@@ -1,13 +1,17 @@
 """Liquidity Strategist agent -- docs/design/asco-orchestrator.md §3, §5.
 
-32B math-optimised model persona finding cheapest/fastest settlement rail.
+Model persona finding the cheapest/fastest settlement rail.
 Selects exclusively from provided RailQuotes.
 """
 
 import json
 from decimal import Decimal
 
-from ubunturemit_asco.agents.sentinel import InferenceTimeoutError, LLMClient
+from ubunturemit_asco.agents.sentinel import (
+    InferenceBackendMissingError,
+    InferenceTimeoutError,
+    LLMClient,
+)
 from ubunturemit_asco.models import (
     LiquidityProposal,
     LiquidityRequestInput,
@@ -32,7 +36,12 @@ You MUST return a valid JSON object matching the LiquidityProposal schema:
 class LiquidityStrategist:
     """Liquidity Strategist agent selecting optimal settlement rail."""
 
-    def __init__(self, llm_client: LLMClient | None = None) -> None:
+    def __init__(self, llm_client: LLMClient) -> None:
+        if llm_client is None:
+            raise InferenceBackendMissingError(
+                "LiquidityStrategist needs an inference backend; without one it refuses "
+                "rather than synthesising a proposal (Non-negotiable I)."
+            )
         self._client = llm_client
 
     def propose(
@@ -86,27 +95,7 @@ class LiquidityStrategist:
             f"Selecting optimal rail from {len(eligible_quotes)} eligible quotes "
             f"for transfer {request_input.transfer_id}"
         )
-        action = f"Prompting 32B Liquidity Strategist with payload: {payload_json}"
-
-        if self._client is None:
-            # Deterministic selection: pick lowest total fee, breaking ties by fastest settlement
-            best_quote = min(
-                eligible_quotes,
-                key=lambda q: (q.fee_minor_units, q.estimated_seconds),
-            )
-            proposal = LiquidityProposal(
-                rail=best_quote.rail,
-                total_cost=Money(
-                    minor_units=best_quote.fee_minor_units,
-                    currency=request_input.amount.currency,
-                ),
-                estimated_seconds=best_quote.estimated_seconds,
-                rationale=(
-                    f"Selected {best_quote.rail} as optimal rail with fee "
-                    f"{best_quote.fee_minor_units} and {best_quote.estimated_seconds}s latency."
-                ),
-            )
-            return proposal, thought, action
+        action = f"Prompting Liquidity Strategist with payload: {payload_json}"
 
         try:
             raw_response = self._client.complete(
@@ -135,20 +124,21 @@ class LiquidityStrategist:
         request_input: LiquidityRequestInput,
     ) -> LiquidityProposal:
         data = json.loads(json_str)
-        rail_str = data.get("rail", "")
+        # Required fields have no defaults (asco-orchestrator.md §5): a missing cost or
+        # latency raises and takes the retry path, never becomes 0 or 10 seconds.
+        rail_str = data["rail"]
         if rail_str not in SettlementRail._value2member_map_:
             raise ValueError(f"Unknown rail '{rail_str}'")
         rail = SettlementRail(rail_str)
 
-        cost_data = data.get("totalCost", {})
-        cost_minor = int(cost_data.get("minorUnits", 0))
+        cost_minor = int(data["totalCost"]["minorUnits"])
         total_cost = Money(
             minor_units=cost_minor,
             currency=request_input.amount.currency,
         )
 
-        est_sec = Decimal(str(data.get("estimatedSeconds", "10.0")))
-        rationale = data.get("rationale", "")
+        est_sec = Decimal(str(data["estimatedSeconds"]))
+        rationale = data["rationale"]
 
         return LiquidityProposal(
             rail=rail,

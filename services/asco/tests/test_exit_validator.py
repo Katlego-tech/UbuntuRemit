@@ -194,3 +194,74 @@ def test_exit_validator_rejects_forbidden_rail(canonical_transfer: Transfer) -> 
     assert result.valid is False
     assert result.deterministic_override is True
     assert "violates constraint" in result.reason
+
+
+def _pass_verdict() -> ComplianceVerdict:
+    return ComplianceVerdict(
+        outcome=VerdictOutcome.PASS,
+        risk_score=Decimal("0.1"),
+        cited_rules=["FICA_S21"],
+        rationale="Compliant transfer.",
+    )
+
+
+_PAPSS_QUOTE = RailQuote(
+    rail=SettlementRail.PAPSS,
+    fee_minor_units=1200,
+    spread_bps=8,
+    estimated_seconds=Decimal("11.0"),
+)
+
+
+def test_exit_validator_rejects_latency_the_rail_never_quoted(
+    canonical_transfer: Transfer,
+) -> None:
+    proposal = LiquidityProposal(
+        rail=SettlementRail.PAPSS,
+        total_cost=Money(minor_units=1200, currency=CurrencyCode.ZAR),
+        estimated_seconds=Decimal("2.0"),
+        rationale="Claims PAPSS settles in 2s.",
+    )
+    result = ExitValidator().validate(
+        transfer=canonical_transfer,
+        verdict=_pass_verdict(),
+        proposal=proposal,
+        rail_quotes=[_PAPSS_QUOTE],
+    )
+    assert result.valid is False
+    assert result.deterministic_override is True
+    assert "latency" in result.reason
+
+
+def test_exit_validator_rejects_cost_below_quoted_fee(canonical_transfer: Transfer) -> None:
+    proposal = LiquidityProposal(
+        rail=SettlementRail.PAPSS,
+        total_cost=Money(minor_units=0, currency=CurrencyCode.ZAR),
+        estimated_seconds=Decimal("11.0"),
+        rationale="Claims PAPSS is free.",
+    )
+    result = ExitValidator().validate(
+        transfer=canonical_transfer,
+        verdict=_pass_verdict(),
+        proposal=proposal,
+        rail_quotes=[_PAPSS_QUOTE],
+    )
+    assert result.valid is False
+    assert result.deterministic_override is True
+    assert "below" in result.reason
+
+
+def test_exit_validator_rejects_a_proposal_when_no_quotes_were_offered(
+    canonical_transfer: Transfer,
+) -> None:
+    proposal = LiquidityProposal(
+        rail=SettlementRail.PAPSS,
+        total_cost=Money(minor_units=1200, currency=CurrencyCode.ZAR),
+        estimated_seconds=Decimal("11.0"),
+        rationale="No quotes, yet a rail.",
+    )
+    result = ExitValidator().validate(
+        transfer=canonical_transfer, verdict=_pass_verdict(), proposal=proposal, rail_quotes=[]
+    )
+    assert result.valid is False
+    assert result.deterministic_override is True

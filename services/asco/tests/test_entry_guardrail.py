@@ -9,14 +9,16 @@ Rules per docs/design/asco-orchestrator.md §3, §4:
 - Any hard gate failure rejects or escalates with cited rules.
 """
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 
 import pytest
 from ubunturemit_asco.guardrails.entry import (
+    EmptySanctionsListError,
     EntryGuardrail,
     GuardrailOutcome,
     RecipientProfile,
+    SanctionsListSource,
     SanctionsScreener,
     SenderProfile,
     StaticSanctionsScreener,
@@ -111,9 +113,14 @@ def recipient_profile() -> RecipientProfile:
     )
 
 
+# A list built for these tests, named as one -- no real list is claimed.
+TEST_LIST = SanctionsListSource(name="test fixture list", published=date(2026, 10, 1))
+
+
 @pytest.fixture
 def sanctions_screener() -> SanctionsScreener:
     return StaticSanctionsScreener(
+        source=TEST_LIST,
         sanctioned_names={"VLADIMIR SANCTIONED", "CORRUPT ACTOR", "BLOCKED ENTITY"},
         sanctioned_bics={"BLCKZAJJXXX"},
     )
@@ -188,6 +195,8 @@ def test_entry_guardrail_rejects_sanctioned_sender(
         kyc_tier="L3",
         country_of_residence="ZA",
         is_pep=False,
+        prior_transfers_30d_count=0,
+        prior_transfers_30d_minor_units=0,
     )
     guardrail = EntryGuardrail(sanctions_screener=sanctions_screener)
     result = guardrail.evaluate(
@@ -199,7 +208,7 @@ def test_entry_guardrail_rejects_sanctioned_sender(
     assert result.outcome == GuardrailOutcome.REJECTED
     assert result.stage == "SANCTIONS"
     assert "FIC_ACT_S28A" in result.cited_rules
-    assert "UN_SANCTIONS_LIST" in result.cited_rules
+    assert TEST_LIST.citation() in result.cited_rules
     assert "Vladimir Sanctioned" in str(result.rejection_reason)
 
 
@@ -269,6 +278,8 @@ def test_entry_guardrail_escalates_pep_above_threshold(
         kyc_tier="L3",
         country_of_residence="ZA",
         is_pep=True,
+        prior_transfers_30d_count=0,
+        prior_transfers_30d_minor_units=0,
     )
     guardrail = EntryGuardrail(sanctions_screener=sanctions_screener)
     result = guardrail.evaluate(
@@ -311,6 +322,8 @@ def test_entry_guardrail_rejects_amount_exceeding_kyc_tier(
         kyc_tier="L1",
         country_of_residence="ZA",
         is_pep=False,
+        prior_transfers_30d_count=0,
+        prior_transfers_30d_minor_units=0,
     )
     guardrail = EntryGuardrail(sanctions_screener=sanctions_screener)
     result = guardrail.evaluate(
@@ -367,3 +380,47 @@ def test_entry_guardrail_rejects_sda_cap_exceeded(
     assert result.outcome == GuardrailOutcome.REJECTED
     assert result.stage == "LIMITS"
     assert "SARB_EXCON_SDA_CAP_EXCEEDED" in result.cited_rules
+
+
+# --- T041a: no code path screens against zero entries and reports CLEAR ----------
+
+
+def test_unconfigured_guardrail_refuses_to_screen() -> None:
+    with pytest.raises(EmptySanctionsListError):
+        EntryGuardrail(sanctions_screener=None)  # type: ignore[arg-type]
+
+
+def test_screener_over_an_empty_list_refuses_to_exist() -> None:
+    with pytest.raises(EmptySanctionsListError):
+        StaticSanctionsScreener(source=TEST_LIST, sanctioned_names=[], sanctioned_bics=[])
+
+
+def test_screener_over_blank_entries_refuses_to_exist() -> None:
+    with pytest.raises(EmptySanctionsListError):
+        StaticSanctionsScreener(source=TEST_LIST, sanctioned_names=["", "  "])
+
+
+def test_sanctions_source_needs_a_name() -> None:
+    with pytest.raises(ValueError, match="name"):
+        SanctionsListSource(name=" ", published=date(2026, 10, 1))
+
+
+def test_unknown_kyc_tier_is_refused_not_coerced(
+    canonical_transfer: Transfer,
+    recipient_profile: RecipientProfile,
+    sanctions_screener: SanctionsScreener,
+) -> None:
+    profile = SenderProfile(
+        kyc_tier="TIER_3",
+        country_of_residence="ZA",
+        is_pep=False,
+        prior_transfers_30d_count=0,
+        prior_transfers_30d_minor_units=0,
+    )
+    result = EntryGuardrail(sanctions_screener=sanctions_screener).evaluate(
+        xml_input=build_pain001(canonical_transfer),
+        sender_profile=profile,
+        recipient_profile=recipient_profile,
+    )
+    assert result.outcome == GuardrailOutcome.REJECTED
+    assert result.cited_rules == ["LIMIT_TABLE_UNAVAILABLE"]

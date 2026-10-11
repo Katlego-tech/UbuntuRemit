@@ -7,6 +7,7 @@ Rules per docs/design/asco-orchestrator.md §4:
 - Every participant actor logs AuditRecord.
 """
 
+import json
 from datetime import UTC, datetime
 from decimal import Decimal
 
@@ -16,6 +17,7 @@ from ubunturemit_asco.agents.sentinel import (
     ComplianceSentinel,
     InferenceTimeoutError,
 )
+from ubunturemit_asco.agents.strategist import LiquidityStrategist
 from ubunturemit_asco.models import (
     ComplianceAssessmentInput,
     RailQuote,
@@ -102,6 +104,8 @@ def transfer_and_assessment() -> tuple[Transfer, ComplianceAssessmentInput, list
         sender_is_pep=False,
         recipient_country="GH",
         recipient_account_age_days=300,
+        prior_transfers_30d_count=0,
+        prior_transfers_30d_minor_units=0,
     )
     quotes = [
         RailQuote(
@@ -120,6 +124,43 @@ def transfer_and_assessment() -> tuple[Transfer, ComplianceAssessmentInput, list
     return transfer, inp, quotes
 
 
+def _passing_sentinel() -> ComplianceSentinel:
+    """A Sentinel whose (mocked) model returns a cited PASS."""
+    return ComplianceSentinel(
+        llm_client=MockLLMClient(
+            [
+                json.dumps(
+                    {
+                        "outcome": "PASS",
+                        "riskScore": 0.1,
+                        "citedRules": ["FIC_ACT_S28A"],
+                        "rationale": "Test verdict from a mocked model.",
+                        "constraints": {"forbiddenRails": []},
+                    }
+                )
+            ]
+        )
+    )
+
+
+def _papss_strategist() -> LiquidityStrategist:
+    """A Strategist whose (mocked) model proposes the offered PAPSS quote."""
+    return LiquidityStrategist(
+        llm_client=MockLLMClient(
+            [
+                json.dumps(
+                    {
+                        "rail": "PAPSS",
+                        "totalCost": {"minorUnits": 1200, "currency": "ZAR"},
+                        "estimatedSeconds": 11.0,
+                        "rationale": "Test proposal from a mocked model.",
+                    }
+                )
+            ]
+        )
+    )
+
+
 def test_negotiation_happy_path(
     transfer_and_assessment: tuple[Transfer, ComplianceAssessmentInput, list[RailQuote]],
 ) -> None:
@@ -127,7 +168,11 @@ def test_negotiation_happy_path(
     transfer, assessment_input, quotes = transfer_and_assessment
     audit_logger = InMemoryAuditLogger()
 
-    coordinator = NegotiationCoordinator(audit_logger=audit_logger)
+    coordinator = NegotiationCoordinator(
+        compliance_sentinel=_passing_sentinel(),
+        liquidity_strategist=_papss_strategist(),
+        audit_logger=audit_logger,
+    )
     result = coordinator.negotiate_and_settle(
         transfer=transfer,
         assessment_input=assessment_input,
@@ -155,7 +200,10 @@ def test_negotiation_inference_timeout_fails_closed(
     mock_sentinel_client = MockLLMClient([InferenceTimeoutError("vLLM timeout")])
     sentinel = ComplianceSentinel(llm_client=mock_sentinel_client)
 
-    coordinator = NegotiationCoordinator(compliance_sentinel=sentinel)
+    coordinator = NegotiationCoordinator(
+        compliance_sentinel=sentinel,
+        liquidity_strategist=_papss_strategist(),
+    )
     result = coordinator.negotiate_and_settle(
         transfer=transfer,
         assessment_input=assessment_input,
@@ -176,7 +224,11 @@ def test_negotiation_kafka_unavailable_refuses_transfer(
         def log_record(self, record) -> None:
             raise ConnectionError("Kafka cluster unavailable")
 
-    coordinator = NegotiationCoordinator(audit_logger=BrokenKafkaLogger())
+    coordinator = NegotiationCoordinator(
+        compliance_sentinel=_passing_sentinel(),
+        liquidity_strategist=_papss_strategist(),
+        audit_logger=BrokenKafkaLogger(),
+    )
 
     with pytest.raises(ConnectionError, match="Kafka cluster unavailable"):
         coordinator.negotiate_and_settle(
@@ -184,3 +236,74 @@ def test_negotiation_kafka_unavailable_refuses_transfer(
             assessment_input=assessment_input,
             rail_quotes=quotes,
         )
+
+
+def test_negotiation_strategist_timeout_fails_closed(
+    transfer_and_assessment: tuple[Transfer, ComplianceAssessmentInput, list[RailQuote]],
+) -> None:
+    """A Strategist inference timeout escalates like the Sentinel's -- never a 500, never settle."""
+    transfer, assessment_input, quotes = transfer_and_assessment
+    audit_logger = InMemoryAuditLogger()
+    coordinator = NegotiationCoordinator(
+        compliance_sentinel=_passing_sentinel(),
+        liquidity_strategist=LiquidityStrategist(
+            llm_client=MockLLMClient([InferenceTimeoutError("vLLM timeout")])
+        ),
+        audit_logger=audit_logger,
+    )
+
+    result = coordinator.negotiate_and_settle(
+        transfer=transfer, assessment_input=assessment_input, rail_quotes=quotes
+    )
+
+    assert result.outcome == "PENDING_REVIEW"
+    assert result.proposal is None
+    assert any(r.deterministic_override for r in audit_logger.records)
+
+
+@pytest.mark.parametrize(
+    "reply",
+    [
+        "not json at all",
+        json.dumps(
+            {"rail": "PAPSS", "totalCost": None, "estimatedSeconds": 11.0, "rationale": "x"}
+        ),
+        json.dumps(
+            {
+                "rail": "PAPSS",
+                "totalCost": {"minorUnits": 1},
+                "estimatedSeconds": "abc",
+                "rationale": "x",
+            }
+        ),
+    ],
+    ids=["unparseable", "null-cost-TypeError", "bad-decimal-InvalidOperation"],
+)
+def test_negotiation_any_strategist_failure_escalates(
+    transfer_and_assessment: tuple[Transfer, ComplianceAssessmentInput, list[RailQuote]],
+    reply: str,
+) -> None:
+    """Whatever exception a malformed proposal raises, the loop escalates -- never a 500."""
+    transfer, assessment_input, quotes = transfer_and_assessment
+    coordinator = NegotiationCoordinator(
+        compliance_sentinel=_passing_sentinel(),
+        liquidity_strategist=LiquidityStrategist(llm_client=MockLLMClient([reply, reply])),
+    )
+    result = coordinator.negotiate_and_settle(
+        transfer=transfer, assessment_input=assessment_input, rail_quotes=quotes
+    )
+    assert result.outcome == "PENDING_REVIEW"
+
+
+def test_negotiation_with_no_rail_quotes_escalates(
+    transfer_and_assessment: tuple[Transfer, ComplianceAssessmentInput, list[RailQuote]],
+) -> None:
+    transfer, assessment_input, _ = transfer_and_assessment
+    coordinator = NegotiationCoordinator(
+        compliance_sentinel=_passing_sentinel(),
+        liquidity_strategist=_papss_strategist(),
+    )
+    result = coordinator.negotiate_and_settle(
+        transfer=transfer, assessment_input=assessment_input, rail_quotes=[]
+    )
+    assert result.outcome == "PENDING_REVIEW"

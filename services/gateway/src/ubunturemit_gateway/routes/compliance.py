@@ -1,27 +1,31 @@
-"""Compliance Health API endpoint -- docs/design/frontend-web.md §4."""
+"""Compliance health API endpoint -- docs/design/gateway.md §5."""
 
-from fastapi import APIRouter
+from typing import Annotated
+
+from fastapi import APIRouter, Depends
+from ubunturemit_asco.guardrails.entry import ENTRY_GATE_RULES
+from ubunturemit_gateway.dependencies import (
+    GatewayDependencies,
+    GatewayRuntime,
+    get_dependencies,
+    get_runtime,
+)
 from ubunturemit_gateway.models import ComplianceHealthResponse
 
 router = APIRouter(prefix="/api/compliance", tags=["Compliance"])
 
 
 @router.get("/health", response_model=ComplianceHealthResponse)
-def get_compliance_health() -> ComplianceHealthResponse:
+def get_compliance_health(
+    deps: Annotated[GatewayDependencies, Depends(get_dependencies)],
+    runtime: Annotated[GatewayRuntime, Depends(get_runtime)],
+) -> ComplianceHealthResponse:
+    missing = deps.missing()
+    screener = deps.sanctions_screener
     return ComplianceHealthResponse(
-        status="OPERATIONAL",
-        engine_version="ASCO-v1.0 (70B Sentinel + 32B Strategist on MI300X)",
-        rules_enforced=[
-            "FIC_ACT_S28A (Sanctions Screening)",
-            "FIC_ACT_S21H (PEP Enhanced Due Diligence)",
-            "SARB_EXCON_B4 (SDA 1,000,000 ZAR Annual Limit)",
-            "FATF_RECOMMENDATION_16 (Travel Rule Complete Originator/Beneficiary)",
-            "ISO_20022_3TIER (XSD + Field + Business Rule Verification)",
-        ],
-        sanctions_list_status="UP_TO_DATE (UN / OFAC / FIC sync: < 5m ago)",
-        audit_log_status=(
-            "APPEND_ONLY_IMMUTABLE (Kafka + Postgres with UPDATE/DELETE block triggers)"
-        ),
-        rejection_rate_24h=0.012,
-        total_screened_24h=1420,
+        status="UNAVAILABLE" if missing else "OPERATIONAL",
+        missing_dependencies=missing,
+        rules_enforced=list(ENTRY_GATE_RULES),
+        sanctions_list=screener.source.citation() if screener is not None else None,
+        audit_log=type(runtime.audit_logger).__name__,
     )

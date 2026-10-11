@@ -214,7 +214,10 @@ leniently, it is re-asked once and then escalated.
 
 **`railQuotes` are supplied to the model, never invented by it.** The Strategist ranks options it
 was given; a rail or a fee that wasn't in the input is a fabrication, and the exit validator
-rejects the proposal outright (Non-negotiable I).
+rejects the proposal outright (Non-negotiable I). Concretely it rejects a rail not quoted, an
+`estimatedSeconds` different from the chosen rail's quote, and a `totalCost` below that quote's fee.
+Every field marked required above is read without a default: a missing one is malformed output
+(re-ask once, then escalate), never a zero.
 
 ## 6. Structure
 
@@ -222,8 +225,8 @@ rejects the proposal outright (Non-negotiable I).
 | --- | --- | --- |
 | `services/gateway/` | planned | FastAPI intake, pain.001 parsing, auth |
 | `services/asco/orchestrator/` | built (T042, T046) | State machine & negotiation coordinator — **deterministic, no LLM calls** |
-| `services/asco/agents/sentinel.py` | built (T043) | Compliance Sentinel prompt + schema binding |
-| `services/asco/agents/strategist.py` | built (T044) | Liquidity Strategist prompt + schema binding |
+| `services/asco/agents/sentinel.py` | built (T043) | Compliance Sentinel prompt + schema binding; **refuses to exist without an inference client** |
+| `services/asco/agents/strategist.py` | built (T044) | Liquidity Strategist prompt + schema binding; **refuses to exist without an inference client** |
 | `services/asco/guardrails/entry.py` | built (T040, T041) | Schema, sanctions, limits |
 | `services/asco/guardrails/exit.py` | built (T045) | Citation check, rail re-check, ISO 20022 validation |
 | `services/inference/` | planned | vLLM serving both models on one MI300X node |

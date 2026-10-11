@@ -60,7 +60,7 @@ UbuntuRemit/
 │   ├── stitch-mockups/            ✅ the frozen visual reference — DO NOT EDIT
 │   └── stitch_send_money_wizard.zip  ✅ the original export, intact
 ├── services/                      ✅ bounded context services
-│   ├── gateway/                   ✅ FastAPI HTTP intake & client endpoints (/api/fx, /api/transfers, /api/compliance, /api/wallet)
+│   ├── gateway/                   ✅ FastAPI HTTP intake (/api/fx, /api/transfers, /api/compliance) — docs/design/gateway.md
 │   ├── messaging/                 ✅ ISO 20022 message builders/parsers and 3-tier validation (T028-T039)
 │   ├── asco/                      ✅ multi-agent negotiation loop, entry/exit guardrails, orchestrator (T040-T047)
 │   ├── audit/                     ✅ append-only audit store (SQLite/Postgres) & Kafka asco.audit consumer (T050-T051)

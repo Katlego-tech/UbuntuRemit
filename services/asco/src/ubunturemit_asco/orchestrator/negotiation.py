@@ -14,6 +14,7 @@ from ubunturemit_asco.guardrails.exit import ExitValidator
 from ubunturemit_asco.models import (
     AuditRecord,
     ComplianceAssessmentInput,
+    ComplianceVerdict,
     LiquidityProposal,
     LiquidityRequestInput,
     RailQuote,
@@ -54,6 +55,8 @@ class NegotiationResult:
     proposal: LiquidityProposal | None = None
     audit_records: list[AuditRecord] = field(default_factory=list)
     reason: str = ""
+    # The Sentinel verdict the outcome rests on -- its citedRules are what a caller cites.
+    verdict: ComplianceVerdict | None = None
 
 
 class NegotiationCoordinator:
@@ -61,15 +64,18 @@ class NegotiationCoordinator:
 
     def __init__(
         self,
+        *,
+        compliance_sentinel: ComplianceSentinel,
+        liquidity_strategist: LiquidityStrategist,
         master_orchestrator: MasterOrchestrator | None = None,
-        compliance_sentinel: ComplianceSentinel | None = None,
-        liquidity_strategist: LiquidityStrategist | None = None,
         exit_validator: ExitValidator | None = None,
         audit_logger: AuditLogger | None = None,
     ) -> None:
+        # The two agents have no default: building one needs an inference backend, and a
+        # coordinator that quietly built its own would be how a fallback verdict returns.
         self._mo = master_orchestrator or MasterOrchestrator()
-        self._cs = compliance_sentinel or ComplianceSentinel()
-        self._ls = liquidity_strategist or LiquidityStrategist()
+        self._cs = compliance_sentinel
+        self._ls = liquidity_strategist
         self._xv = exit_validator or ExitValidator()
         self._audit = audit_logger or InMemoryAuditLogger()
 
@@ -128,6 +134,7 @@ class NegotiationCoordinator:
                 observation=f"Rejection cited: {verdict.cited_rules}",
             )
             return NegotiationResult(
+                verdict=verdict,
                 transfer=current_transfer,
                 outcome="REJECTED",
                 audit_records=audit_trail,
@@ -143,6 +150,7 @@ class NegotiationCoordinator:
                 observation=f"Escalation rationale: {verdict.rationale}",
             )
             return NegotiationResult(
+                verdict=verdict,
                 transfer=current_transfer,
                 outcome="PENDING_REVIEW",
                 audit_records=audit_trail,
@@ -164,15 +172,35 @@ class NegotiationCoordinator:
 
         while exchanges < MAX_NEGOTIATION_EXCHANGES:
             exchanges += 1
-            req_input = LiquidityRequestInput(
-                transfer_id=current_transfer.id,
-                corridor_source=current_transfer.quote.send.currency,
-                corridor_target=current_transfer.quote.recipient_receives.currency,
-                amount=current_transfer.quote.send,
-                rail_quotes=rail_quotes,
-                constraints=active_constraints,
-            )
-            proposal, ls_thought, ls_action = self._ls.propose(req_input)
+            try:
+                req_input = LiquidityRequestInput(
+                    transfer_id=current_transfer.id,
+                    corridor_source=current_transfer.quote.send.currency,
+                    corridor_target=current_transfer.quote.recipient_receives.currency,
+                    amount=current_transfer.quote.send,
+                    rail_quotes=rail_quotes,
+                    constraints=active_constraints,
+                )
+                proposal, ls_thought, ls_action = self._ls.propose(req_input)
+            except Exception as err:  # noqa: BLE001 -- every failure here must escalate
+                # Fail closed, as the Sentinel does: no rails to offer, a timeout, or output
+                # that could not be parsed into a valid proposal -- whatever the exception
+                # type -- escalates. Nothing here reaches the audit sink, so an audit failure
+                # still propagates and refuses the transfer.
+                _record(
+                    actor="orchestrator",
+                    thought="Liquidity Strategist produced no valid proposal",
+                    action="Escalate to human review",
+                    observation=f"{type(err).__name__}: {err}",
+                    override=True,
+                )
+                return NegotiationResult(
+                    verdict=verdict,
+                    transfer=current_transfer,
+                    outcome="PENDING_REVIEW",
+                    audit_records=audit_trail,
+                    reason=f"Liquidity Strategist failed ({type(err).__name__}). Escalating.",
+                )
             ls_obs = (
                 f"Proposed rail: {proposal.rail}, cost: {proposal.total_cost.minor_units}, "
                 f"estSec: {proposal.estimated_seconds}"
@@ -195,6 +223,7 @@ class NegotiationCoordinator:
                 override=True,
             )
             return NegotiationResult(
+                verdict=verdict,
                 transfer=current_transfer,
                 outcome="PENDING_REVIEW",
                 audit_records=audit_trail,
@@ -234,6 +263,7 @@ class NegotiationCoordinator:
         if not exit_result.valid:
             rejected_t = self._mo.transition(updated_transfer, TransferState.REJECTED)
             return NegotiationResult(
+                verdict=verdict,
                 transfer=rejected_t,
                 outcome="REJECTED",
                 proposal=proposal,
@@ -252,6 +282,7 @@ class NegotiationCoordinator:
         )
 
         return NegotiationResult(
+            verdict=verdict,
             transfer=settling_t,
             outcome="SETTLING",
             proposal=proposal,

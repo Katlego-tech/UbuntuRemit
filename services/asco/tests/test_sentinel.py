@@ -13,6 +13,7 @@ from decimal import Decimal
 import pytest
 from ubunturemit_asco.agents.sentinel import (
     ComplianceSentinel,
+    InferenceBackendMissingError,
     InferenceTimeoutError,
 )
 from ubunturemit_asco.models import (
@@ -120,3 +121,41 @@ def test_compliance_sentinel_timeout_fails_closed(sample_input: ComplianceAssess
 
     assert verdict.outcome == VerdictOutcome.ESCALATE
     assert "INFERENCE_TIMEOUT_FAIL_CLOSED" in verdict.cited_rules
+
+
+def test_sentinel_without_inference_backend_refuses() -> None:
+    """No model attached -> no Sentinel. It never synthesises a verdict (Non-negotiable I)."""
+    with pytest.raises(InferenceBackendMissingError):
+        ComplianceSentinel(llm_client=None)  # type: ignore[arg-type]
+
+
+def test_sentinel_verdict_missing_risk_score_escalates(
+    sample_input: ComplianceAssessmentInput,
+) -> None:
+    """A PASS with no stated riskScore is not read as zero risk: re-asked, then ESCALATE."""
+    no_score = json.dumps(
+        {"outcome": "PASS", "citedRules": ["FICA s21"], "rationale": "No score given."}
+    )
+    sentinel = ComplianceSentinel(llm_client=MockLLMClient([no_score, no_score]))
+
+    verdict, _, _ = sentinel.assess(sample_input)
+
+    assert verdict.outcome == VerdictOutcome.ESCALATE
+
+
+def test_sentinel_unknown_forbidden_rail_is_not_dropped(
+    sample_input: ComplianceAssessmentInput,
+) -> None:
+    """'swift' (lowercase) is not a rail: re-asked, then ESCALATE -- never a lifted constraint."""
+    reply = json.dumps(
+        {
+            "outcome": "PASS",
+            "riskScore": 0.1,
+            "citedRules": ["FICA s21"],
+            "rationale": "Forbids a rail by an unknown name.",
+            "constraints": {"forbiddenRails": ["swift"]},
+        }
+    )
+    sentinel = ComplianceSentinel(llm_client=MockLLMClient([reply, reply]))
+    verdict, _, _ = sentinel.assess(sample_input)
+    assert verdict.outcome == VerdictOutcome.ESCALATE
