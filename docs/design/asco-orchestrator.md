@@ -214,11 +214,11 @@ leniently, it is re-asked once and then escalated.
 {
   "outcome": "PASS | ESCALATE | BLOCK",     // required
   "riskScore": 0.0,                          // required, 0.0-1.0
-  "citedRules": ["FICA s21", "SARB EXCON B.4"], // required, MIN LENGTH 1
+  "citedRules": ["FICA s21", "SARB EXCON B.4"], // required, 1-20 items, each 1-200 chars
   "rationale": "string, <= 600 chars",       // required
   "constraints": {                            // optional; binds the Liquidity Strategist
-    "forbiddenRails": ["SWIFT"],
-    "maxSettlementSeconds": 5
+    "forbiddenRails": ["SWIFT"],              // distinct rails, at most 3
+    "maxSettlementSeconds": 5                 // > 0
   }
 }
 ```
@@ -241,8 +241,8 @@ leniently, it is re-asked once and then escalated.
 // Liquidity Strategist -> Master Orchestrator   (schema: LiquidityProposal)
 {
   "rail": "RIPPLE | SWIFT | PAPSS",          // required, MUST be one of the supplied railQuotes
-  "totalCost": { "minorUnits": 1800, "currency": "ZAR" },  // required
-  "estimatedSeconds": 3.2,                    // required
+  "totalCost": { "minorUnits": 1800, "currency": "ZAR" },  // required; integer >= 0, the transfer's own currency
+  "estimatedSeconds": 3.2,                    // required, > 0, equal to the chosen rail's quote
   "rationale": "string, <= 400 chars"         // required
 }
 ```
@@ -264,7 +264,7 @@ Every field marked required above is read without a default: a missing one is ma
 | `services/asco/agents/strategist.py` | built (T044) | Liquidity Strategist prompt + schema binding; **refuses to exist without an inference client** |
 | `services/asco/guardrails/entry.py` | built (T040, T041, T041a, T071) | Schema, sanctions, limits — the sanctions list and the limit table are both injected with a named, dated source and cited on every rejection; no figure lives in code |
 | `services/asco/guardrails/exit.py` | built (T045) | Citation check, rail re-check, ISO 20022 validation |
-| `services/inference/` | planned | vLLM serving both models on one MI300X node |
+| `services/inference/` | planned — design in [inference.md](inference.md) (T078–T080) | vLLM serving both models on one MI300X node, and the `LLMClient` that calls it |
 | `services/audit/` | built (T050, T051, T050a) | `KafkaAuditLogger` (acks=all, fails closed) → `asco.audit` → `KafkaAuditConsumer` → Postgres, writer role holds SELECT + INSERT only; triggers as the second wall. The production topic's retention is a SARB PEM figure not yet sourced — **T050b** |
 | `services/rails/` | router built (T055); adapters **blocked** (T052-T054, sandbox credentials) | Bounded-retry router over injected adapters; no adapter ships yet |
 

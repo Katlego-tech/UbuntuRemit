@@ -14,6 +14,7 @@ assistant can read and write them.
 | `iso20022` | [iso20022-messaging.md](iso20022-messaging.md) | agreed | Schema-version governance (MyStandards → policy matrix → verification pipeline), pain.001 → pacs.008 → camt.053 mapping, validation gates |
 | `frontend-web` | [frontend-web.md](frontend-web.md) | agreed | Page structure, token mapping, visual references by path, deviations from the mockups |
 | `gateway` | [gateway.md](gateway.md) | agreed | Injected external sources (none defaulted), the `POST /api/transfers` sequence, the 503-when-unconfigured contract |
+| `inference` | [inference.md](inference.md) | draft | The vLLM client behind both agents (schema-constrained requests, error mapping), the two-server deployment, the JSON Schemas sent as `response_format` |
 | `send-money-wizard` | [send-money-wizard.md](send-money-wizard.md) | agreed, **visually unverified** | The three wizard steps that were never exported — steps 1, 3, 4 |
 
 ## Reading order for a new session
