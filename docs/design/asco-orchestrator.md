@@ -214,11 +214,11 @@ leniently, it is re-asked once and then escalated.
 {
   "outcome": "PASS | ESCALATE | BLOCK",     // required
   "riskScore": 0.0,                          // required, 0.0-1.0
-  "citedRules": ["FICA s21", "SARB EXCON B.4"], // required, MIN LENGTH 1
+  "citedRules": ["FICA s21", "SARB EXCON B.4"], // required, 1-20 items, each 1-200 chars
   "rationale": "string, <= 600 chars",       // required
   "constraints": {                            // optional; binds the Liquidity Strategist
-    "forbiddenRails": ["SWIFT"],
-    "maxSettlementSeconds": 5
+    "forbiddenRails": ["SWIFT"],              // distinct rails, at most 3
+    "maxSettlementSeconds": 5                 // > 0
   }
 }
 ```
@@ -241,8 +241,8 @@ leniently, it is re-asked once and then escalated.
 // Liquidity Strategist -> Master Orchestrator   (schema: LiquidityProposal)
 {
   "rail": "RIPPLE | SWIFT | PAPSS",          // required, MUST be one of the supplied railQuotes
-  "totalCost": { "minorUnits": 1800, "currency": "ZAR" },  // required
-  "estimatedSeconds": 3.2,                    // required
+  "totalCost": { "minorUnits": 1800, "currency": "ZAR" },  // required; integer >= 0, the transfer's own currency
+  "estimatedSeconds": 3.2,                    // required, > 0, equal to the chosen rail's quote
   "rationale": "string, <= 400 chars"         // required
 }
 ```

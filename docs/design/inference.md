@@ -1,6 +1,6 @@
 # Design — `inference` (the model client and its server)
 
-**Status:** draft · **Owner:** Kirito (Claude) · **Tasks:** T076 (this doc), T078–T080 ·
+**Status:** draft — awaiting Kirito's review · **Owner:** Kirito (Claude) · **Tasks:** T076 (this doc), T078–T080 ·
 **Spec:** [SPEC.md](../../SPEC.md) US2
 
 ---
@@ -40,20 +40,29 @@ classDiagram
         +str schema_name
         +float timeout_s
         +int seed
+        +int max_tokens
         +complete(prompt, system_prompt) str
     }
-    class InferenceTimeoutError
-    class InferenceResponseError
+    class InferenceTimeoutError {
+        <<ubunturemit_asco>>
+    }
+    class InferenceResponseError {
+        <<ubunturemit_inference>>
+    }
     LLMClient <|.. VllmChatClient
-    VllmChatClient ..> InferenceTimeoutError : connect/read timeout
-    VllmChatClient ..> InferenceResponseError : non-200, empty, truncated
+    VllmChatClient ..> InferenceTimeoutError : any httpx timeout
+    VllmChatClient ..> InferenceResponseError : transport error, non-200, empty, finish_reason ≠ stop
 ```
 
 - **One client per agent**, each bound to its agent's schema at construction. The `LLMClient`
   protocol stays unchanged, so nothing in `services/asco` changes.
 - `VllmChatClient` lives in `services/inference/` (its own package, per
-  [project-structure.md](../project-structure.md)); `services/asco` does not import it — the
-  gateway (or whatever wires the agents) does.
+  [project-structure.md](../project-structure.md)), which **depends on `ubunturemit-asco`** and
+  imports `LLMClient` and `InferenceTimeoutError` from it. That exact class matters: the agents
+  catch `ubunturemit_asco.InferenceTimeoutError`, and a look-alike defined elsewhere would turn a
+  timeout into a re-ask — doubling latency inside the RTGS window and auditing it as malformed
+  output. `InferenceResponseError` is the inference package's own. `services/asco` never imports
+  `services/inference`; whatever wires the agents (the gateway) does.
 - **Constrained decoding is not trusted alone.** The agents still parse and validate every reply
   (§5 of the ASCO doc). The schema makes a malformed reply rare; the parser makes it harmless.
 
@@ -66,9 +75,9 @@ sequenceDiagram
     participant V as vLLM (MI300X)
     A->>C: complete(prompt, system_prompt)
     C->>V: POST /v1/chat/completions<br/>model, messages[system, user],<br/>response_format json_schema (strict),<br/>temperature 0, seed
-    alt no response within timeout_s
+    alt any httpx timeout (connect, read, write, pool) within timeout_s
         C-->>A: raise InferenceTimeoutError  (Sentinel → ESCALATE)
-    else HTTP ≠ 200, no content, or finish_reason = "length"
+    else other transport error, HTTP ≠ 200, no content, or finish_reason ≠ "stop"
         C-->>A: raise InferenceResponseError  (re-ask once, then ESCALATE)
     else
         V-->>C: choices[0].message.content
@@ -76,16 +85,26 @@ sequenceDiagram
     end
 ```
 
-- **Errors map onto the paths the agents already have.** A timeout is `InferenceTimeoutError`,
-  which the Sentinel turns into ESCALATE and the coordinator escalates for the Strategist. Anything
-  else unusable is `InferenceResponseError`, which takes the re-ask-then-escalate path.
-- `finish_reason == "length"` is an error, not a reply: truncated JSON is malformed output.
+- **Errors map onto the paths the agents already have.** Every `httpx.TimeoutException` is
+  `InferenceTimeoutError`, which the Sentinel turns into ESCALATE and the coordinator escalates for
+  the Strategist. Every other `httpx.TransportError` (connection refused, DNS failure), a non-200,
+  a reply with no `choices[0].message.content`, and any `finish_reason` other than `"stop"` is
+  `InferenceResponseError`, which takes the re-ask-then-escalate path.
+- `"length"` means truncated JSON; `"abort"` or any other reason means the model did not finish.
+  Neither is a reply.
 - **The client never repairs, trims or defaults a reply.** It returns the model's text or raises.
 
 ## 5. Contracts — the schemas sent as `response_format`
 
 Restated from [asco-orchestrator.md](asco-orchestrator.md) §5 as JSON Schema. Where they differ,
-§5 of that doc wins and this section is the bug.
+§5 of that doc wins and this section is the bug. Each block below is the `json_schema` member of
+the request: `"response_format": {"type": "json_schema", "json_schema": <block>}`. The arrays are
+bounded so that a repetition loop at temperature 0 hits a schema limit, not `max_tokens`.
+
+**Unverified until T079:** whether vLLM 0.26.0's structured-output backends honour `strict` and
+every keyword used here (`maxLength`, `pattern`, `exclusiveMinimum`, `maxItems`, `uniqueItems`).
+The vLLM docs page checked on 2026-10-11 does not say. The agents' own validation holds either way
+(§3), so an unsupported keyword weakens decoding, never the decision.
 
 ```json
 {
@@ -98,13 +117,19 @@ Restated from [asco-orchestrator.md](asco-orchestrator.md) §5 as JSON Schema. W
     "properties": {
       "outcome": {"enum": ["PASS", "ESCALATE", "BLOCK"]},
       "riskScore": {"type": "number", "minimum": 0, "maximum": 1},
-      "citedRules": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+      "citedRules": {
+        "type": "array", "minItems": 1, "maxItems": 20,
+        "items": {"type": "string", "minLength": 1, "maxLength": 200}
+      },
       "rationale": {"type": "string", "maxLength": 600},
       "constraints": {
         "type": "object",
         "additionalProperties": false,
         "properties": {
-          "forbiddenRails": {"type": "array", "items": {"enum": ["RIPPLE", "SWIFT", "PAPSS"]}},
+          "forbiddenRails": {
+            "type": "array", "maxItems": 3, "uniqueItems": true,
+            "items": {"enum": ["RIPPLE", "SWIFT", "PAPSS"]}
+          },
           "maxSettlementSeconds": {"type": "number", "exclusiveMinimum": 0}
         }
       }
@@ -139,8 +164,10 @@ Restated from [asco-orchestrator.md](asco-orchestrator.md) §5 as JSON Schema. W
 }
 ```
 
-Request fields fixed by the client: `temperature: 0`, a configured `seed`, and
-`max_tokens` large enough for the schema's maximum (`rationale` bounds it).
+Request fields set by the client: `temperature: 0`, the configured `seed`, and the configured
+`max_tokens`. With every string and array bounded, the longest valid reply is finite; T079 measures
+it in tokens for each chosen model and sets `max_tokens` above it. Until then it is a required
+constructor argument with no default.
 
 ## 6. Serving
 
@@ -155,9 +182,11 @@ Request fields fixed by the client: `temperature: 0`, a configured `seed`, and
 ## 7. How this is verified
 
 - **T078 (buildable now):** unit tests against `httpx.MockTransport` — the request body carries the
-  schema, `temperature 0` and the seed; a timeout raises `InferenceTimeoutError`; a 500, an empty
-  `choices`, missing `content` and `finish_reason: "length"` each raise `InferenceResponseError`;
-  a valid reply is returned byte-for-byte.
+  `response_format` envelope with the schema, `temperature 0`, the seed and `max_tokens`; a read
+  timeout and a connect timeout each raise `ubunturemit_asco.InferenceTimeoutError` (asserted as
+  that exact class); a refused connection, a 500, an empty `choices`, missing `content`,
+  `finish_reason: "length"` and `"abort"` each raise `InferenceResponseError`; a valid reply is
+  returned byte-for-byte.
 - **T079 (needs the MI300X):** both servers up; one real call per agent returns JSON that the
   agent's own parser accepts.
 - **T060 / T062** then run against these clients instead of mocks.
