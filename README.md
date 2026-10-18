@@ -1,22 +1,48 @@
 # UbuntuRemit
 
-Empowering African prosperity by providing a secure, ISO 20022-compliant bridge that honors the
-spirit of Ubuntu, ensuring that every remittance strengthens the bonds of community through
-transparent, frictionless, and compliant cross-border exchange.
+A backend prototype for cross-border remittances on African corridors. It builds and parses
+ISO 20022 messages and validates them against the base ISO 20022 schemas (see the conformance
+boundary below for exactly what that does and doesn't mean).
 
 ---
 
 ## What this is
 
-A cross-border remittance platform for African corridors, built around **ASCO — the Agentic
-Settlement & Compliance Orchestrator**. Three agents negotiate every transaction: a **Compliance
-Sentinel** (AML/CFT/SARB), a **Liquidity Strategist** (cheapest and fastest rail across Ripple,
-SWIFT and PAPSS), and a **Master Orchestrator** that holds state and emits the ISO 20022 payload.
+A Python/FastAPI backend built around **ASCO, the Agentic Settlement & Compliance Orchestrator**.
+Two LLM-backed agents take part in each transfer: a **Compliance Sentinel** (AML/CFT checks) and a
+**Liquidity Strategist** (ranks the rails it is given quotes for). A **Master Orchestrator** holds
+the transfer's state, but it is a deterministic state machine, not a model: it makes no LLM calls.
 
-The design bet in one line: **the models suggest, deterministic code decides.** Hard-coded
-guardrails sit on both sides of the negotiation, so an LLM can rank and explain a routing choice
-but can never permit a settlement. Everything runs on sovereign infrastructure (AMD Instinct
-MI300X · ROCm 7.0 · vLLM), so no transaction data reaches a third-party API.
+The design bet in one line: **the models suggest, deterministic code decides.** Fail-closed
+guardrails sit on both sides of the agents (UN sanctions-list screening, PEP escalation, KYC-tier
+transfer limits on the way in; validation of the agents' output on the way out), so a model can
+rank and explain a routing choice but can never approve a settlement. The agents are tested with
+scripted model responses; they have **not yet been run against a live model**.
+
+Payment rails (Ripple, SWIFT, PAPSS) sit behind an adapter interface with a fallback router that
+retries a failed settlement on another rail. No real rail adapter exists yet: real integrations
+wait on sandbox access.
+
+It is designed for self-hosted inference, so that no transaction data would reach a third-party
+LLM API. A vLLM client for both agents exists, but the target hardware (an AMD Instinct MI300X) is
+not provisioned, so no model has been served.
+
+## Where it stands
+
+A backend prototype that **does not run end to end yet**. 336 unit tests plus 7 integration tests
+(against the compose Postgres and Kafka).
+
+| Part | State |
+| --- | --- |
+| `libs/domain` | Built. The shared entities (`Transfer`, `Money`, the transfer state machine). |
+| `services/messaging` | Built. pain.001, pacs.008, camt.053 and head.001, validated against the official XSDs. |
+| `services/asco` | Built. The two agents, the orchestrator state machine and the entry/exit guardrails. Agents tested with scripted model responses only. |
+| `services/audit` | Built. Append-only Postgres audit store fed from Kafka, enforced with database grants and triggers. |
+| `services/gateway` | Built. FastAPI endpoints with every outside source injected; an endpoint whose source isn't configured answers 503 and names it. |
+| `services/rails` | Interface and fallback router only. No real adapter until sandbox access. |
+| `services/inference` | Client only (`VllmChatClient`). No model server until the MI300X is provisioned. |
+| Start-up wiring | Not built. Nothing yet constructs the gateway's sources (model clients, sanctions list, audit logger) at start-up, so the services don't run together. |
+| Web client | Static mockup pages, not connected to the backend. |
 
 > ### ⚠ Conformance boundary
 >
@@ -63,9 +89,9 @@ comparison is the entire acceptance test for this directory.
 A React port was built and reverted on 2026-07-27 for not matching the mockups; see
 [docs/design/frontend-web.md](docs/design/frontend-web.md) §8 before considering another rewrite.
 
-The services in `services/` are designed but not built, so the figures on these pages are the
-mockup's static values — honest, because nothing on them claims to be a live rate or balance.
-T025 wires them to real endpoints.
+The pages aren't connected to the services yet, so the figures on them are the mockup's static
+values — honest, because nothing on them claims to be a live rate or balance. T025 wires them to
+real endpoints.
 
 ## How work happens here
 
@@ -102,8 +128,8 @@ UbuntuRemit/
 │   └── project-structure.md               the actual layout
 ├── apps/web/                              static HTML client — the Stitch export, as-is
 ├── legacy/stitch-mockups/                 frozen visual reference — do not edit
-├── libs/domain/                           the shared domain entities — built, 100 tests
-└── services/                              gateway · asco · messaging · audit (planned)
+├── libs/domain/                           the shared domain entities
+└── services/                              gateway · asco · messaging · audit · rails · inference
 ```
 
 ## License
