@@ -26,7 +26,12 @@
 #      can't see them). A branch with commits after the merged PR's head fails this
 #      check and is kept -- those commits exist nowhere else. So is one whose PR merged
 #      into some other branch: its work isn't on main.
-# main/master and the checked-out branch are never deleted.
+# main/master and the checked-out branch are never deleted. Nor is a branch another worktree
+# has checked out: git refuses to, and the worktree may hold work in progress. It is reported,
+# with the worktree to remove first. The one worktree cleared without asking is one whose
+# folder is gone and was inside this repo (.claude/worktrees/...): with the repo here and that
+# folder not, it is not coming back. One that lived elsewhere may be on a drive that is only
+# unplugged, so it is reported and left.
 # ---------------------------------------------------------------------------
 
 set -u
@@ -39,7 +44,7 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --dry-run) dry=1; shift ;;
     --quiet)   quiet=1; shift ;;
-    -h|--help) sed -n '2,30p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,35p' "$0"; exit 0 ;;
     *) echo "prune-branches.sh: unknown argument '$1'" >&2; exit 2 ;;
   esac
 done
@@ -60,6 +65,40 @@ done
 [ -n "$base" ] || { say "prune-branches: no origin/main or origin/master -- nothing pruned."; exit 0; }
 
 current="$(git symbolic-ref --short -q HEAD || true)"
+
+# Which worktree has each branch checked out, as "branch<TAB>path" lines: `held` for a worktree
+# that is there, `missing` for one whose folder is gone. Plain lists, not an associative
+# array, so this still runs under the bash 3.2 that macOS ships.
+top="$(pwd -P)"
+held=""
+missing=""
+wt=""; wt_branch=""; wt_gone=0; wt_locked=0
+note_worktree() {
+  [ -n "$wt" ] && [ -n "$wt_branch" ] || return 0
+  if [ "$wt_gone" -eq 0 ]; then
+    held="$held$wt_branch	$wt
+"
+  elif [ "$wt_locked" -eq 0 ] && [ "${wt#"$top"/}" != "$wt" ]; then
+    # Its folder was inside this repo and is gone: the entry is all that is left of it.
+    [ "$dry" -eq 1 ] || git worktree remove --force "$wt" >/dev/null 2>&1 || missing="$missing$wt_branch	$wt
+"
+  else
+    missing="$missing$wt_branch	$wt
+"
+  fi
+}
+while IFS= read -r line; do
+  case "$line" in
+    "worktree "*) note_worktree; wt="${line#worktree }"; wt_branch=""; wt_gone=0; wt_locked=0 ;;
+    "branch "*)   wt_branch="${line#branch refs/heads/}" ;;
+    prunable*)    wt_gone=1 ;;
+    locked*)      wt_locked=1 ;;
+  esac
+done < <(git worktree list --porcelain)
+note_worktree
+
+# The path recorded for branch $2 in the list $1, if any.
+worktree_of() { printf '%s' "$1" | awk -F'\t' -v b="$2" '$1 == b { print $2; exit }'; }
 
 # The squash/rebase check needs the GitHub API. Without it, rule 1 still runs.
 has_gh=0
@@ -86,13 +125,27 @@ while IFS=$'\t' read -r branch upstream track; do
     reason="its pull request was merged into $base"
   fi
 
-  if [ -n "$reason" ]; then
+  at="$(worktree_of "$held" "$branch")"
+  gone="$(worktree_of "$missing" "$branch")"
+  if [ -n "$reason" ] && [ -n "$at" ]; then
+    say "kept $branch: $reason, but it is checked out in the worktree at $at"
+    say "   Remove the worktree, then pull again: git worktree remove \"$at\""
+    kept=$((kept + 1))
+  elif [ -n "$reason" ] && [ -n "$gone" ]; then
+    say "kept $branch: $reason, but it belongs to a worktree whose folder is not there: $gone"
+    say "   If that folder is gone for good, then pull again: git worktree prune"
+    kept=$((kept + 1))
+  elif [ -n "$reason" ]; then
     if [ "$dry" -eq 1 ]; then
       say "would delete $branch ($reason)"
+      deleted=$((deleted + 1))
+    elif git branch -D --quiet "$branch"; then
+      say "deleted $branch ($reason)"
+      deleted=$((deleted + 1))
     else
-      git branch -D --quiet "$branch" && say "deleted $branch ($reason)"
+      say "kept $branch: $reason, but git could not delete it (see above)."
+      kept=$((kept + 1))
     fi
-    deleted=$((deleted + 1))
   elif [ "$track" = "[gone]" ]; then
     say "kept $branch: deleted on the server, but no pull request merged into $base matches its tip."
     [ "$has_gh" -eq 1 ] || say "   (gh is not installed or not logged in, so squash merges can't be checked.)"
